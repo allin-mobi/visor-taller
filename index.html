@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><!--wrap-->
 <meta name="mobile-web-app-capable" content="yes"><!--wrap-->
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><!--wrap-->
-<meta name="apple-mobile-web-app-title" content="Visor Taller"><!--wrap-->
-<title>Visor de Taller</title>
+<meta name="apple-mobile-web-app-title" content="Iris"><!--wrap-->
+<title>Iris</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -556,7 +556,7 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
   <header class="bar">
     <div class="brand">
       <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M16 3 28 9.5v13L16 29 4 22.5v-13Z"/><path d="M4 9.5 16 16l12-6.5M16 16v13"/><path d="M10 6.3 22 12.8" opacity=".55"/></svg>
-      <span class="brand-name">Visor de Taller</span>
+      <span class="brand-name">Iris</span>
     </div>
     <div class="file" id="file-info">
       <span class="file-name" id="file-name">Sin modelo</span>
@@ -779,7 +779,7 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 <div class="print-sheet" id="print-sheet" aria-hidden="true">
   <div class="ps-head"><b id="ps-title"></b><span id="ps-date"></span></div>
   <img id="ps-img" alt="">
-  <div class="ps-foot"><span id="ps-foot"></span><span>Visor de Taller</span></div>
+  <div class="ps-foot"><span id="ps-foot"></span><span>Iris</span></div>
 </div>
 
 <script type="importmap">
@@ -1470,7 +1470,7 @@ function showModel(m) {
   $('#file-name').textContent = m.fileName;
   $('#file-meta').innerHTML = (m.isSample ? '<span class="badge">Ejemplo</span> ' : m.shared ? '<span class="badge">Plano compartido</span> ' : '') + esc([`${m.pieces.length} piezas`, m.isSample ? '' : m.shared ? 'solo para ver' : m.format, 'medidas en mm'].filter(Boolean).join(' · ') + (m.units !== 'mm' ? ` (archivo en ${m.units})` : ''));
   $('#btn-rotate').hidden = !m.canRotate;
-  document.title = (m.isSample ? '' : m.fileName + ' · ') + 'Visor de Taller';
+  document.title = (m.isSample ? '' : m.fileName + ' · ') + 'Iris';
 
   $('#search').value = '';
   buildList();

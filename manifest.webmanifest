@@ -1,0 +1,17 @@
+{
+  "name": "Iris — el ojo de Cerebrus",
+  "short_name": "Iris",
+  "description": "Visor de taller: planos 3D de Rhino, medidas de cada pieza y anotaciones. Powered by Cerebrus.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f5f4",
+  "theme_color": "#2b3138",
+  "icons": [
+    { "src": "iris-icono-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "iris-icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "iris-icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

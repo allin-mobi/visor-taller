@@ -451,6 +451,21 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .note.done { background: var(--done-soft); border-left-color: var(--done); }
 .note.done .note-top, .note.done .note-acts .link { color: var(--done-ink); }
 .note.done .note-text { color: var(--muted); }
+/* Tipos de anotación (Cerebrus, 16/11): nota azul · tarea naranja · problema rojo · resuelta verde */
+.note-pin.t-nota, .note-n.t-nota { background: #1c6dd0; }
+.note-pin.t-nota:hover, .note-pin.t-nota:focus-visible { background: #155ab0; }
+.note-pin.t-problema, .note-n.t-problema { background: #d8312b; }
+.note-pin.t-problema:hover, .note-pin.t-problema:focus-visible { background: #b3241f; }
+.note.t-nota { background: color-mix(in srgb, #1c6dd0 12%, var(--panel)); border-left-color: #1c6dd0; }
+.note.t-problema { background: color-mix(in srgb, #d8312b 12%, var(--panel)); border-left-color: #d8312b; }
+.note-tipos { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 2px 0 8px; }
+.note-tipos button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 11px; font: 600 12px/1.2 inherit; cursor: pointer; }
+.note-tipos button.on.t-nota { background: #1c6dd0; border-color: #1c6dd0; color: #fff; }
+.note-tipos button.on.t-tarea { background: #e8590c; border-color: #e8590c; color: #fff; }
+.note-tipos button.on.t-problema { background: #d8312b; border-color: #d8312b; color: #fff; }
+.note-tipos select { margin-left: auto; font: 13px inherit; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.note-firma { margin-top: 4px; font-size: 11px; color: var(--muted); }
+.note-etq { font-size: 11px; font-weight: 600; opacity: .85; }
 .note-n.done, .note.done .note-n, .nrow.done .note-n, .note-pin.done { background: #2f9e44; }
 .note-pin.done:hover, .note-pin.done:focus-visible { background: #237a35; }
 .note-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: 8px; }
@@ -551,6 +566,23 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 }
 @media (prefers-reduced-motion: reduce) { .side { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+/* Cerebrus: cocina del presupuesto (Cotizator) — ubicar módulos y botones Puertas / Fondos / Alacenas.
+   Solo aparecen cuando Cerebrus abre un modelo con __visor.abrirModelo(m, { mover:true … }). */
+.ens-tools button { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+.ens-tools svg { width: 16px; height: 16px; flex: none; }
+.ens-tools button:disabled { color: var(--muted); opacity: .45; cursor: default; background: transparent; }
+.ens-tools #btn-move[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.pos-grid { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 6px 10px; align-items: center; margin-top: 10px; font-size: 14px; }
+.pos-grid input { width: 100%; min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink); font: 500 14px var(--font-num); text-align: right; }
+.pos-grid input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.pos-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.mod-list { margin: 6px 0 0; padding: 0; list-style: none; max-height: 120px; overflow-y: auto; font-size: 14px; }
+.mod-list li { padding: 3px 0; border-bottom: 1px dashed var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mod-list li:last-child { border-bottom: 0; }
+.rot-row { display: flex; gap: 6px; margin-top: 10px; }
+.sub-eyebrow { display: block; margin-top: 14px; font: 600 12px/1 var(--font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stage.moving canvas { cursor: move; }
+@media (max-width: 860px) { .ens-tools .tl-mv { display: none; } }
 </style>
 </head><!--wrap-->
 <body><!--wrap-->
@@ -638,6 +670,20 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
         <!-- celular: con este botón prendido, arrastrar un dedo dibuja el recuadro de selección (→ adentro · ← toca) -->
         <button class="tool box-toggle" type="button" id="btn-boxsel" aria-pressed="false" title="Elegir piezas con un recuadro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3.5" width="14" height="11.5" rx="1" stroke-dasharray="3 2.6"/><path d="m12.5 12 8 2.8-3.4 1.3-1.3 3.4Z" fill="currentColor"/></svg></button>
         <button class="tool" type="button" id="btn-print" title="Imprimir una parte del dibujo (Ctrl+P)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>Imprimir</button><!--local-->
+        <!-- Cerebrus: qué piezas se ven (Puertas / Fondos / Alacenas) y ubicar los módulos de la cocina del presupuesto -->
+        <div class="seg filt-seg" id="filt-seg" role="group" aria-label="Qué piezas se ven" hidden>
+          <button type="button" data-filt="puertas" aria-pressed="true" title="Mostrar u ocultar las puertas y los frentes de cajón, para ver adentro">Puertas</button>
+          <button type="button" data-filt="fondos" aria-pressed="true" title="Mostrar u ocultar los fondos">Fondos</button>
+          <button type="button" data-filt="altas" aria-pressed="true" title="Mostrar u ocultar las alacenas (en Planta tapan a los bajo mesada)" hidden>Alacenas</button>
+        </div>
+        <div class="seg ens-tools" id="ens-tools" role="group" aria-label="Ubicar los módulos en la obra" hidden>
+          <button type="button" id="btn-move" aria-pressed="false" title="Arrastrar módulos enteros con el click izquierdo (tecla G). En Frente o en los costados, arrastrar sube y baja.">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></svg><span class="tl-mv">Mover módulos</span></button>
+          <button type="button" data-rot="90" title="Girar los módulos elegidos 90° a la izquierda (Shift+R)" disabled>⟲<span class="tl-mv"> 90°</span></button>
+          <button type="button" data-rot="-90" title="Girar los módulos elegidos 90° a la derecha (R)" disabled>⟳<span class="tl-mv"> 90°</span></button>
+          <button type="button" data-rot="180" title="Dar vuelta los módulos elegidos (180°)" disabled>180°</button>
+          <button type="button" id="btn-reacomodar" title="Volver a acomodar todo automáticamente, de izquierda a derecha">↺<span class="tl-mv"> Reacomodar</span></button>
+        </div>
         <button class="tool" type="button" id="btn-rotate" hidden title="Si el modelo aparece acostado, lo pone de pie">Parar modelo</button>
         <button class="tool warn" type="button" id="btn-showall" hidden>Mostrar todo</button>
       </div>
@@ -928,7 +974,10 @@ const measExtMat = new THREE.LineBasicMaterial({ color: 0xd4381c, depthTest: fal
 const noteEdgeMat = new LineMaterial({ color: 0xe8590c, linewidth: 2.4 });
 // contorno verde: piezas cuyas anotaciones están todas resueltas
 const doneEdgeMat = new LineMaterial({ color: 0x2f9e44, linewidth: 2.4 });
-const LINE_MATS = [edgeMat, hoverEdgeMat, selEdgeMat, selTopEdgeMat, noteEdgeMat, doneEdgeMat, measLineMat, tempLineMat];
+// azul (nota) y rojo (problema); la tarea usa el naranja de siempre
+const notaEdgeMat = new LineMaterial({ color: 0x1c6dd0, linewidth: 2.4 });
+const problemaEdgeMat = new LineMaterial({ color: 0xd8312b, linewidth: 2.4 });
+const LINE_MATS = [edgeMat, hoverEdgeMat, selEdgeMat, selTopEdgeMat, noteEdgeMat, doneEdgeMat, notaEdgeMat, problemaEdgeMat, measLineMat, tempLineMat];
 function matFor(hex) {
   let m = baseMats.get(hex);
   if (!m) {
@@ -1040,6 +1089,14 @@ let notes = [];            // anotaciones: { id, n, text, scope, at, pieces: [í
 let noteSeq = 0, noteUid = 0;
 let noteEdit = null;       // anotación que se está escribiendo: { mode: 'add'|'edit', ids | id, draft }
 const pieceNotes = new Map();   // índice de pieza → anotaciones que la tocan
+// Cerebrus: opciones que pasa Cerebrus con abrirModelo(m, opciones) — viven en model.cb (otro modelo = sin opciones).
+//   model.modulos = módulos de la cocina (cada uno un grupo); pieza.mod = su módulo.
+let moveMode = false;      // Cerebrus: el click izquierdo arrastra módulos enteros
+let modDrag = null;        // Cerebrus: arrastre de módulos en curso
+let modelSeq = 0;          // Cerebrus: cuántos modelos se mostraron (el arranque no pisa uno que abrió Cerebrus)
+const filt = { puertas: true, fondos: true, altas: true };   // Cerebrus: botones Puertas / Fondos / Alacenas
+const hayModulos = () => !!(model && model.modulos && model.modulos.length);
+const puedeMover = () => !!(hayModulos() && model.cb && model.cb.mover);   // Cerebrus: "Mover módulos" habilitado
 
 /* ---------------------------------------------------------------------
    Medidas de una pieza: largo × ancho × espesor (aunque esté girada)
@@ -1409,6 +1466,9 @@ function clearModel() {
   for (const p of model?.pieces || []) { p.mesh.geometry.dispose(); p.edges.geometry.dispose(); }
   modelRoot.clear(); modelRoot.rotation.set(0, 0, 0);
   sel.clear(); hover = null; visibleMeshes = [];
+  // Cerebrus: soltar el modo Mover módulos del modelo anterior
+  modDrag = null; moveMode = false;
+  $('#btn-move').setAttribute('aria-pressed', 'false'); stageEl.classList.remove('moving');
   clearCotas();
   notes = []; noteEdit = null; pieceNotes.clear();
   labelsEl.querySelectorAll('.note-pin').forEach((e) => e.remove());
@@ -1421,16 +1481,28 @@ function showModel(m) {
   clearModel();
   resetHistory();
   model = m;
+  modelSeq++;   // Cerebrus
   $('#empty').hidden = true;
   // un plano compartido trae los colores tal cual los dejó quien lo mandó
   const tone = (c) => (m.exactColors ? rgbHex(c) : shade(c));
   m.layers.forEach((L) => { L.count = 0; L.visible = L.visible !== false; L.hex = tone(L.color); });
 
+  // Cerebrus: cocina del presupuesto — cada módulo es un grupo; sus piezas vienen en coordenadas
+  // propias (origen = atrás-izquierda-piso del módulo, frente hacia −Y) y el grupo lo ubica en la obra.
+  if (m.modulos && m.modulos.length) {
+    m.modulos.forEach((u, k) => {
+      u.k = k; u.pieces = [];
+      u.group = new THREE.Group();
+      modelRoot.add(u.group);
+      setUnitPos(u, u.pos);
+    });
+  }
+
   // modelos muy lejos del origen: se acercan para que no "tiemble" la imagen
   const bb = new THREE.Box3();
   for (const p of m.pieces) for (let i = 0; i < p.positions.length; i += 3) bb.expandByPoint(_v.set(p.positions[i], p.positions[i + 1], p.positions[i + 2]));
   const c = bb.getCenter(new THREE.Vector3());
-  const far = Math.max(Math.abs(c.x), Math.abs(c.y), Math.abs(c.z)) > 1e5 / m.toMM;
+  const far = !m.modulos && Math.max(Math.abs(c.x), Math.abs(c.y), Math.abs(c.z)) > 1e5 / m.toMM;   // Cerebrus: con módulos, nunca
 
   m.pieces.forEach((p, i) => {
     p.i = i;
@@ -1458,9 +1530,12 @@ function showModel(m) {
     edges.raycast = () => {};
     mesh.add(edges);
     p.mesh = mesh; p.edges = edges;
-    modelRoot.add(mesh);
+    // Cerebrus: con módulos, cada pieza va dentro del grupo de su módulo
+    const u = m.modulos && m.modulos.length ? m.modulos[m.modulos[p.mod] ? p.mod : 0] : null;
+    if (u) { p.mod = u.k; u.group.add(mesh); u.pieces.push(p); } else modelRoot.add(mesh);
     m.layers[p.layer].count++;
   });
+  modelRoot.updateMatrixWorld(true);   // Cerebrus
 
   // colores de capa elegidos antes en esta PC
   const saved = m.shared ? {} : savedColors();
@@ -1469,12 +1544,22 @@ function showModel(m) {
 
   const approx = m.pieces.filter((p) => p.approx).length;
   if (approx) showNotice(`${approx} ${approx === 1 ? 'pieza se dibujó' : 'piezas se dibujaron'} de forma aproximada porque el archivo no guardó su forma sombreada. En Rhino, poné una vista en modo Sombreado y guardá de nuevo.`);
+  else if (m.notice) showNotice(m.notice);   // Cerebrus: aviso que manda Cerebrus (ítems sin dibujo…)
   else hideNotice();
 
   $('#file-name').textContent = m.fileName;
   $('#file-meta').innerHTML = (m.isSample ? '<span class="badge">Ejemplo</span> ' : m.shared ? '<span class="badge">Plano compartido</span> ' : '') + esc([`${m.pieces.length} piezas`, m.isSample ? '' : m.shared ? 'solo para ver' : m.format, 'medidas en mm'].filter(Boolean).join(' · ') + (m.units !== 'mm' ? ` (archivo en ${m.units})` : ''));
+  // Cerebrus: el modelo del presupuesto trae su propia línea (cliente · piezas · biblioteca)
+  if (m.cb && m.meta) $('#file-meta').innerHTML = (m.badge ? `<span class="badge">${esc(m.badge)}</span> ` : '') + esc(m.meta);
   $('#btn-rotate').hidden = !m.canRotate;
   document.title = (m.isSample ? '' : m.fileName + ' · ') + 'Iris';
+
+  // Cerebrus: botones Puertas / Fondos / Alacenas y "Mover módulos" (solo si Cerebrus los pide)
+  for (const k of Object.keys(filt)) filt[k] = true;
+  document.querySelectorAll('[data-filt]').forEach((b) => b.setAttribute('aria-pressed', 'true'));
+  $('#filt-seg').hidden = !m.cb;
+  $('[data-filt="altas"]').hidden = !(m.modulos && m.modulos.length > 1 && m.modulos.some((u) => u.cat === 'alta'));
+  $('#ens-tools').hidden = !puedeMover();
 
   $('#search').value = '';
   buildList();
@@ -1495,7 +1580,7 @@ function rebuildGrid() {
   const half = Math.ceil((size * 0.6 + major * 0.8) / major) * major;
   const cx = Math.round((box.min.x + box.max.x) / 2 / major) * major;
   const cy = Math.round((box.min.y + box.max.y) / 2 / major) * major;
-  const z = box.min.z - 0.5 / k;
+  const z = (hayModulos() ? Math.min(0, box.min.z) : box.min.z) - 0.5 / k;   // Cerebrus: con módulos, la cuadrícula es el piso
   const minor = [], maj = [];
   for (let t = -half; t <= half + 1e-6; t += step) {
     const arr = Math.abs(Math.round(t / step) % 10) === 0 ? maj : minor;
@@ -1591,9 +1676,15 @@ function meshMatOf(p) {
 }
 function edgeMatOf(p) {
   if (!printing && sel.has(p.i)) return selEdgeMat;
-  if (!printing && hover === p) return hoverEdgeMat;
+  if (!printing && hover && (hover === p || (moveMode && hover.mod === p.mod))) return hoverEdgeMat;   // Cerebrus: moviendo, se marca el módulo entero
   // naranja si le queda alguna anotación pendiente; verde si todas están resueltas
-  if (!printing && pieceNotes.has(p.i)) return pieceNotes.get(p.i).some((n) => !n.done) ? noteEdgeMat : doneEdgeMat;
+  if (!printing && pieceNotes.has(p.i)) {
+    const pend = pieceNotes.get(p.i).filter((n) => !n.done);
+    if (!pend.length) return doneEdgeMat;
+    if (pend.some((n) => n.tipo === 'problema')) return problemaEdgeMat;
+    if (pend.some((n) => (n.tipo || 'tarea') === 'tarea')) return noteEdgeMat;
+    return notaEdgeMat;
+  }
   return edgeMat;
 }
 // "fantasma" de la pieza seleccionada: se crea la primera vez que se selecciona y después solo se prende/apaga
@@ -1619,9 +1710,11 @@ function applyVisibility() {
   visibleMeshes = [];
   let hiddenN = 0;
   for (const p of model.pieces) {
-    const v = !p.hidden && model.layers[p.layer].visible;
+    const v0 = !p.hidden && model.layers[p.layer].visible;
+    const v = v0 && !filteredOut(p);   // Cerebrus: Puertas / Fondos / Alacenas apagados
     p.mesh.visible = v;
-    if (v) visibleMeshes.push(p.mesh); else hiddenN++;
+    if (v) visibleMeshes.push(p.mesh);
+    if (!v0) hiddenN++;   // Cerebrus: lo que apagan Puertas/Fondos/Alacenas no cuenta para "Mostrar todo"
     if (p.row) {
       p.row.classList.toggle('off', !v);
       const eye = p.row.querySelector('.eye');
@@ -1648,12 +1741,17 @@ function applyVisibility() {
   requestRender();
 }
 
+// Cerebrus: Puertas / Fondos / Alacenas apagados desde la barra (solo modelos del presupuesto)
+function filteredOut(p) {
+  return (!filt.puertas && p.esPuerta) || (!filt.fondos && p.esFondo) || (!filt.altas && !!model.modulos && model.modulos[p.mod]?.cat === 'alta');
+}
 function setHover(p) {
   if (hover === p) return;
   const prev = hover; hover = p;
-  if (prev) prev.edges.material = edgeMatOf(prev);
-  if (p) p.edges.material = edgeMatOf(p);
-  if (!measuring) canvas.style.cursor = p ? 'pointer' : '';
+  // Cerebrus: moviendo módulos, se marca el módulo entero
+  const paint = (q) => { if (!q) return; for (const r of (moveMode && model.modulos ? model.modulos[q.mod].pieces : [q])) r.edges.material = edgeMatOf(r); };
+  paint(prev); paint(p);
+  if (!measuring) canvas.style.cursor = p ? (moveMode ? 'move' : 'pointer') : '';
   requestRender();
 }
 
@@ -1735,6 +1833,7 @@ window.addEventListener('resize', closeHelp);
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 // sin nada elegido, la ficha es una sola línea (la ayuda completa está en el botón ? de arriba)
 function emptyCardHTML() {
+  if (moveMode) return moveHelpHTML();   // Cerebrus
   const verb = window.matchMedia('(pointer: coarse)').matches ? 'Tocá' : 'Hacé click en';
   return `<p class="hint">${verb} una pieza para ver sus medidas. ¿Dudas? Botón <b>?</b> arriba.</p>`;
 }
@@ -1764,8 +1863,51 @@ function helpHTML() {
     ['Acercarse a una pieza', '<kbd>Doble click</kbd>'],
     ['Medir distancias', '<kbd>M</kbd> o botón Medir'],
   ];
+  // Cerebrus: con módulos, cómo ubicarlos
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  const filas = rows.slice();
+  if (puedeMover()) filas.push(['Ubicar los módulos', coarse ? 'Botón Mover módulos' : '<kbd>G</kbd> o botón Mover módulos']);
   return `<div class="card-head"><span class="eyebrow">Cómo se usa</span></div>
-    <ul class="howto">${rows.map(([t, k]) => `<li><span>${t}</span><span class="keys">${k}</span></li>`).join('')}</ul>`;
+    <ul class="howto">${filas.map(([t, k]) => `<li><span>${t}</span><span class="keys">${k}</span></li>`).join('')}</ul>`;
+}
+// Cerebrus: ayuda de "Mover módulos" (en la ficha, mientras el modo está prendido y no hay nada elegido)
+function moveHelpHTML() {
+  const mv = window.matchMedia('(pointer: coarse)').matches ? [
+    ['Elegir un módulo', 'Tocarlo'],
+    ['Moverlo', 'Arrastrarlo con un dedo'],
+    ['Subir o bajar', 'Arrastrar en vista Frente o en los costados'],
+    ['Girar la vista', 'Un dedo en el vacío'],
+  ] : [
+    ['Elegir un módulo', '<kbd>Click izq.</kbd>'],
+    ['Sumar módulos al bloque', '<kbd>Ctrl</kbd> o <kbd>Shift</kbd>+<kbd>Click</kbd>'],
+    ['Moverlo (con imán de 4 cm)', 'Arrastrar con <kbd>Click izq.</kbd>'],
+    ['Subir o bajar', 'Arrastrar en vista Frente o en los costados'],
+    ['Girar 90°', '<kbd>R</kbd> · <kbd>Shift</kbd>+<kbd>R</kbd>'],
+    ['Elegir con un recuadro', 'Arrastrar en el vacío'],
+    ['Dejar de mover', '<kbd>G</kbd> o <kbd>Esc</kbd>'],
+  ];
+  return `<div class="card-head"><span class="eyebrow">Mover módulos</span><button class="x" type="button" data-act="move-off" aria-label="Dejar de mover módulos">×</button></div>
+    <ul class="howto">${mv.map(([t, k]) => `<li><span>${t}</span><span class="keys">${k}</span></li>`).join('')}</ul>
+    <p class="pos-note">Lo que ubiques queda guardado en el proyecto. El presupuesto no cambia.</p>`;
+}
+// Cerebrus: ubicación (en mm) y giro de los módulos elegidos, al pie de la ficha
+function ensCardHTML() {
+  if (!puedeMover()) return '';
+  const us = selUnits(); if (!us.length) return '';
+  const b = blockBox(us);
+  return `<span class="sub-eyebrow">${us.length === 1 ? 'Ubicación del módulo' : `Ubicación de los ${us.length} módulos, en bloque`}</span>
+    ${us.length > 1 ? `<ul class="mod-list">${us.map((u) => `<li>${esc(u.name)}</li>`).join('')}</ul>` : ''}
+    <div class="pos-grid">
+      <label for="pos-x">Desde la izquierda</label><input id="pos-x" type="number" step="10" data-pos="x" value="${mm(b.min.x)}">
+      <label for="pos-h">Altura del piso</label><input id="pos-h" type="number" step="10" data-pos="h" value="${mm(b.min.z)}">
+      <label for="pos-w">Separado de la pared</label><input id="pos-w" type="number" step="10" data-pos="w" value="${mm(-b.max.y)}">
+    </div>
+    <p class="pos-note">En mm, al borde del bloque (incluye zócalo y laterales).</p>
+    <div class="rot-row">
+      <button class="btn small" type="button" data-act="rot" data-g="90" title="Girar 90° a la izquierda (Shift+R)">⟲ 90°</button>
+      <button class="btn small" type="button" data-act="rot" data-g="-90" title="Girar 90° a la derecha (R)">⟳ 90°</button>
+      <button class="btn small" type="button" data-act="rot" data-g="180">180°</button>
+    </div>`;
 }
 function dimsHTML(d) {
   const lab = ['Largo', 'Ancho', 'Espesor'];
@@ -1783,6 +1925,7 @@ function updateSelTools() {
   const on = !!(model && sel.size);
   selToolsEl.classList.toggle('on', on);
   selToolsEl.querySelectorAll('button').forEach((b) => { b.disabled = !on; });
+  document.querySelectorAll('[data-rot]').forEach((b) => { b.disabled = !(on && puedeMover()); });   // Cerebrus
 }
 function renderCard() {
   updateSelTools();
@@ -1794,6 +1937,15 @@ function renderCard() {
   const ps = [...sel].map((i) => model.pieces[i]);
   // Acercar, Aislar, Anotar y Ocultar están en la barra de arriba (en PC y en celular)
   const actions = (extra = '') => (extra ? `<div class="actions">${extra}</div>` : '');
+  if (moveMode && puedeMover()) {
+    // Cerebrus: moviendo módulos, la ficha habla del módulo (o del bloque), no de la pieza
+    const us = selUnits();
+    cardEl.innerHTML = `<div class="card-head"><span class="eyebrow">${us.length === 1 ? 'Módulo elegido' : 'Módulos en bloque'}</span><button class="x" type="button" data-act="clear" aria-label="Soltar la selección">×</button></div>
+      <h2 class="pname">${us.length === 1 ? esc(us[0].name) : us.length + ' módulos'}</h2>
+      ${us.length === 1 && us[0].info ? `<p class="summary">${esc(us[0].info)}</p>` : ''}
+      ${ensCardHTML()}`;
+    return;
+  }
   if (ps.length === 1) {
     const p = ps[0], L = model.layers[p.layer];
     const box = new THREE.Box3().setFromObject(p.mesh);
@@ -1813,7 +1965,8 @@ function renderCard() {
       ${p.approx ? '<p class="warn-line">Medida aproximada: el archivo no guardó la forma exacta de esta pieza.</p>' : ''}
       ${notesBlockHTML([p.i])}
       ${actions(sameMueble > 1 ? `<button class="btn small" type="button" data-act="mueble">Todo el mueble (${sameMueble})</button>` : '')}
-      ${extra.length ? `<details class="extra"><summary>Más datos de la pieza</summary><dl>${extra.map(([kk, v]) => `<dt>${esc(KEY_LABELS[kk] || kk)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></details>` : ''}`;
+      ${extra.length ? `<details class="extra"><summary>Más datos de la pieza</summary><dl>${extra.map(([kk, v]) => `<dt>${esc(KEY_LABELS[kk] || kk)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></details>` : ''}
+      ${ensCardHTML()}`;   // Cerebrus
   } else {
     const counts = new Map();
     for (const p of ps) counts.set(p.name, (counts.get(p.name) || 0) + 1);
@@ -1822,7 +1975,8 @@ function renderCard() {
       <h2 class="pname">${ps.length} piezas</h2>
       <p class="summary">${summary}</p>
       ${notesBlockHTML(ps.map((p) => p.i))}
-      ${actions()}`;
+      ${actions()}
+      ${ensCardHTML()}`;   // Cerebrus
   }
   // si se está escribiendo una anotación, el cursor queda en el texto
   const ta = $('#note-text');
@@ -1835,6 +1989,7 @@ cardEl.addEventListener('change', (e) => {
 });
 cardEl.addEventListener('input', (e) => {
   if (e.target.id === 'note-text' && noteEdit) { noteEdit.draft = e.target.value; return; }
+  if (e.target.id === 'note-etapa' && noteEdit) { noteEdit.etapa = e.target.value || null; return; }
   const inp = e.target.closest('input[data-cota]'); if (!inp) return;
   const c = cotas[+inp.dataset.cota]; if (!c) return;
   const pos = inp.selectionStart;
@@ -1864,6 +2019,14 @@ cardEl.addEventListener('keydown', (e) => {
     return;
   }
   if (e.target.matches('input[data-cota]') && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); e.target.blur(); }
+  // Cerebrus: ubicación del módulo en mm — Enter aplica (al salir del campo), Esc vuelve al valor de antes
+  if (e.target.matches('input[data-pos]') && e.key === 'Escape') { e.preventDefault(); renderCard(); }
+  if (e.target.matches('input[data-pos]') && e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+});
+// Cerebrus: ubicación del módulo en mm: se aplica al confirmar el número (Enter o salir del campo)
+cardEl.addEventListener('change', (e) => {
+  const inp = e.target.closest('input[data-pos]'); if (!inp) return;
+  setSelPos(inp.dataset.pos, parseFloat(String(inp.value).replace(',', '.')));
 });
 cardEl.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]'); if (!b) return;
@@ -1876,10 +2039,13 @@ cardEl.addEventListener('click', (e) => {
   else if (act === 'cotas-clear') { saveUndo('Borrar todas las cotas'); clearCotas(); }
   else if (act === 'cota-del') deleteCota(+b.dataset.i);
   else if (act === 'note-add') startNoteAdd();
-  else if (act === 'note-edit') { const n = notes.find((x) => x.id === +b.dataset.note); if (n) { noteEdit = { mode: 'edit', id: n.id, draft: n.text }; renderCard(); } }
+  else if (act === 'note-edit') { const n = notes.find((x) => x.id === +b.dataset.note); if (n) { noteEdit = { mode: 'edit', id: n.id, draft: n.text, tipo: tipoDe(n), etapa: n.etapa || null }; renderCard(); } }
+  else if (act === 'note-tipo') { if (noteEdit) { const ta = $('#note-text'); if (ta) noteEdit.draft = ta.value; noteEdit.tipo = b.dataset.tipo; if (noteEdit.tipo !== 'nota' && !noteEdit.etapa && almacen) noteEdit.etapa = almacen.etapaActual || null; renderCard(); } }
   else if (act === 'note-del') deleteNote(+b.dataset.note);
   else if (act === 'note-save') saveNoteEdit();
   else if (act === 'note-cancel') { noteEdit = null; renderCard(); }
+  else if (act === 'move-off') setMoveMode(false);   // Cerebrus
+  else if (act === 'rot') rotateSel(+b.dataset.g);   // Cerebrus
   else if (act === 'mueble') {
     const p = model.pieces[[...sel][0]];
     selectPieces(model.pieces.filter((q) => q.mueble === p.mueble).map((q) => q.i));
@@ -2256,6 +2422,15 @@ function pickAt(x, y) {
   const hit = ray.intersectObjects(visibleMeshes, false)[0];
   return hit ? hit.object.userData.piece : null;
 }
+// Cerebrus: como pickAt, pero devuelve el punto tocado (para arrastrar módulos)
+function hitAt(x, y) {
+  if (!model) return null;
+  cam.updateMatrixWorld();
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, cam);
+  return ray.intersectObjects(visibleMeshes, false)[0] || null;
+}
 const tipEl = $('#tip');
 // el cartelito va abajo a la derecha del mouse; si no entra, se da vuelta para que no se corte
 function showTipAt(x, y) {
@@ -2266,6 +2441,23 @@ function showTipAt(x, y) {
 }
 let down = null, hoverQueued = null;
 const touchIds = new Set();   // dedos apoyados: con dos, se mueve/acerca la vista y nunca se elige
+// Cerebrus: "Mover módulos" — el click izquierdo (o un dedo) sobre una pieza agarra su módulo entero.
+// Se decide en captura, ANTES que la cámara y que el recuadro de selección.
+stageEl.addEventListener('pointerdown', (e) => {
+  if (e.target !== canvas) return;
+  if (modDrag) { e.stopImmediatePropagation(); return; }   // otro dedo mientras se arrastra
+  if (!moveMode || !puedeMover() || measuring || printPick || e.button !== 0) return;
+  const hit = hitAt(e.clientX, e.clientY);
+  if (!hit) return;   // en el vacío: recuadro de selección o girar la vista, como siempre
+  e.stopImmediatePropagation();
+  tipEl.hidden = true;
+  startModDrag(e, hit);
+  if (modDrag) { try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* nada */ } }
+  if (isSheetLayout()) sideEl.scrollTop = 0;
+}, true);
+canvas.addEventListener('pointermove', (e) => { if (modDrag && e.pointerId === modDrag.pid) moveModDrag(e); });
+canvas.addEventListener('pointerup', (e) => { if (modDrag && e.pointerId === modDrag.pid) endModDrag(); });
+canvas.addEventListener('pointercancel', (e) => { if (modDrag && e.pointerId === modDrag.pid) cancelModDrag(); });
 canvas.addEventListener('pointerdown', (e) => {
   tipEl.hidden = true;
   if (e.pointerType === 'touch') {
@@ -2316,14 +2508,16 @@ let lastTap = null, lastDoubleTap = 0;
 function doubleTapAt(x, y) {
   if (measuring || printPick) return;
   const p = pickAt(x, y);
-  if (p) { selectPieces([p.i]); fitSphere(sphereOf([p])); } else fitAll();
+  if (p && moveMode && puedeMover()) { const u = model.modulos[p.mod]; pickUnits([u]); fitSphere(sphereOf(u.pieces.filter((q) => q.mesh.visible))); }   // Cerebrus
+  else if (p) { selectPieces([p.i]); fitSphere(sphereOf([p])); } else fitAll();
   if (isSheetLayout()) sideEl.scrollTop = 0;
 }
 canvas.addEventListener('dblclick', (e) => {
   if (performance.now() - lastDoubleTap < 600) return;   // ya lo resolvió el doble toque de abajo
   if (measuring || printPick) return;
   const p = pickAt(e.clientX, e.clientY);
-  if (p) { selectPieces([p.i]); fitSphere(sphereOf([p])); } else fitAll();
+  if (p && moveMode && puedeMover()) { const u = model.modulos[p.mod]; pickUnits([u]); fitSphere(sphereOf(u.pieces.filter((q) => q.mesh.visible))); }   // Cerebrus
+  else if (p) { selectPieces([p.i]); fitSphere(sphereOf([p])); } else fitAll();
   if (isSheetLayout()) sideEl.scrollTop = 0;
 });
 canvas.addEventListener('pointermove', (e) => {
@@ -2343,7 +2537,9 @@ canvas.addEventListener('pointermove', (e) => {
     setHover(p);
     if (p) {
       const r = stageEl.getBoundingClientRect();
-      tipEl.innerHTML = `<b>${esc(p.name)}</b><span>${p.dims.map(mm).join(' × ')}</span>` + (pieceNotes.get(p.i) || []).map(noteTipLine).join('');
+      const u = moveMode && puedeMover() ? model.modulos[p.mod] : null;   // Cerebrus: moviendo, el cartelito es del módulo
+      tipEl.innerHTML = u ? `<b>${esc(u.name)}</b><span>${esc(u.medidas || '')}</span>`
+        : `<b>${esc(p.name)}</b><span>${p.dims.map(mm).join(' × ')}</span>` + (pieceNotes.get(p.i) || []).map(noteTipLine).join('');
       showTipAt(ev.clientX - r.left, ev.clientY - r.top);
     } else tipEl.hidden = true;
   });
@@ -2374,7 +2570,9 @@ function finishBox(e) {
   const { rect, crossing } = boxDrag;
   endBox();
   const mode = e.shiftKey ? 'add' : (e.ctrlKey || e.metaKey) ? 'remove' : 'replace';
-  const ids = piecesInBox(rect, crossing);
+  let ids = piecesInBox(rect, crossing);
+  // Cerebrus: moviendo módulos, el recuadro elige módulos enteros
+  if (moveMode && puedeMover()) ids = [...new Set(ids.map((i) => model.pieces[i].mod))].flatMap((k) => model.modulos[k].pieces.filter((p) => p.mesh.visible).map((p) => p.i));
   noteEdit = null;
   if (mode === 'replace') sel.clear();
   for (const i of ids) { if (mode === 'remove') sel.delete(i); else sel.add(i); }
@@ -2649,12 +2847,32 @@ function scopeFor(ids) {
 }
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
 const noteIcon = (n) => (n.done ? ICON_CHECK : ICON_NOTE);
+const TIPOS_NOTA = [['nota', 'Nota'], ['tarea', 'Tarea'], ['problema', 'Problema']];
+const tipoDe = (n) => n.tipo || 'tarea';                     // las de antes eran "tareas" (naranja)
+const tipoCls = (n) => (n.done ? '' : ' t-' + tipoDe(n));
+const tipoTxt = (n) => (TIPOS_NOTA.find((t) => t[0] === tipoDe(n)) || [])[1] || '';
+const nuevoIdNota = () => (crypto.randomUUID ? crypto.randomUUID() : 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2));
+/* Almacén: cuando Iris corre dentro de Cerebrus, las anotaciones se guardan ahí (compartidas y en vivo).
+   Sin almacén (versión suelta) quedan en el navegador, como siempre. */
+let almacen = null, almacenCorte = null;
+const etapaTxt = (id) => (almacen && (almacen.etapas || []).find((e) => e.id === id) || {}).txt || '';
+const etqNota = (n) => esc(tipoTxt(n) + (n.etapa && etapaTxt(n.etapa) ? ' · ' + etapaTxt(n.etapa) : ''));
+const puedeEditarNota = (n) => !almacen || almacen.puedeEditar(n);
+function firmaNota(n) {
+  const partes = [];
+  if (n.autor) partes.push('Escrita por ' + n.autor + (n.at ? ' · ' + whenText(n.at) : ''));
+  if (n.done && n.doneBy) partes.push('Resuelta por ' + n.doneBy + (n.doneAt ? ' · ' + whenText(n.doneAt) : ''));
+  return partes.length ? '<div class="note-firma">' + esc(partes.join(' — ')) + '</div>' : '';
+}
+function avisoAlmacen(p) { if (p && p.catch) p.catch((e) => { console.error(e); toast('No se pudo guardar en Cerebrus: ' + (e.message || e), 'error'); }); }
 const noteTipLine = (n) => `<em class="tip-note${n.done ? ' done' : ''}">${noteIcon(n)}<span><b>${n.n}</b> ${n.done ? '(resuelto) ' : ''}${esc(n.text)}</span></em>`;
 function setNoteDone(id, done) {
   const n = notes.find((x) => x.id === id);
   if (!n || !!n.done === done) return;
   saveUndo(`${done ? 'Marcar resuelta' : 'Volver a pendiente'} la anotación ${n.n}`);
   n.done = done; n.doneAt = done ? Date.now() : null;
+  n.doneBy = done && almacen ? almacen.usuario.nombre : null;
+  if (almacen) avisoAlmacen(almacen.resolver(n.uuid, done));
   notesChanged();
   renderCard();
 }
@@ -2662,17 +2880,23 @@ function setNoteDone(id, done) {
 function notesFromSaved(list) {
   const byKey = new Map(model.pieces.map((p) => [pieceKey(p), p.i]));
   return (list || [])
-    .map((s) => ({ id: ++noteUid, n: s.n, text: s.text, scope: s.scope || '', at: s.at || Date.now(), done: !!s.done, doneAt: s.doneAt || null, pieces: (s.keys || []).map((k) => byKey.get(k)).filter((i) => i !== undefined) }))
+    .map((s) => ({ id: ++noteUid, uuid: s.uuid || nuevoIdNota(), n: s.n, text: s.text, scope: s.scope || '', at: s.at || Date.now(), done: !!s.done, doneAt: s.doneAt || null,
+      tipo: s.tipo || 'tarea', etapa: s.etapa || null, autor: s.autor || '', autorId: s.autorId || null, doneBy: s.doneBy || null,
+      pieces: (s.keys || []).map((k) => byKey.get(k)).filter((i) => i !== undefined) }))
     .filter((n) => n.text && n.pieces.length);
 }
-const notesForSave = () => notes.map((n) => ({ n: n.n, text: n.text, scope: n.scope, at: n.at, done: !!n.done, doneAt: n.doneAt || null, keys: n.pieces.map((i) => pieceKey(model.pieces[i])) }));
+const notaParaGuardar = (n) => ({ uuid: n.uuid, n: n.n, text: n.text, scope: n.scope, at: n.at, done: !!n.done, doneAt: n.doneAt || null,
+  tipo: tipoDe(n), etapa: n.etapa || null, keys: n.pieces.map((i) => pieceKey(model.pieces[i])) });
+const notesForSave = () => notes.map(notaParaGuardar);
 function saveNotes() {
+  if (almacen) return;   // en Cerebrus cada cambio ya se guardó en el almacén
   try {
     if (notes.length) localStorage.setItem(notesKey(), JSON.stringify(notesForSave()));
     else localStorage.removeItem(notesKey());
   } catch (e) { /* sin memoria del navegador: quedan solo por ahora */ }
 }
 function loadNotes(m) {
+  desconectarAlmacen();   // otro modelo: Cerebrus vuelve a conectar si es una obra
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(notesKey()) || 'null'); } catch (e) { /* nada */ }
   notes = notesFromSaved(saved || m.sharedNotes || []);
@@ -2709,6 +2933,7 @@ function renderPins() {
     el.type = 'button'; el.className = 'note-pin'; el.dataset.note = n.id;
     el.innerHTML = `${noteIcon(n)}<span>${n.n}</span>`;
     el.classList.toggle('done', !!n.done);
+    if (!n.done) el.classList.add('t-' + tipoDe(n));
     el.setAttribute('aria-label', `Anotación ${n.n}${n.done ? ' (resuelta)' : ''}: ${n.text}`);
     n.pin = el; labelsEl.append(el);
   }
@@ -2743,8 +2968,8 @@ function renderNotesTab() {
   }
   el.innerHTML = [...notes].sort((a, b) => a.n - b.n).map((n) => `<div class="nrow${n.done ? ' done' : ''}">
       <label class="nrow-check" title="${n.done ? 'Resuelta: tocá para volver a pendiente' : 'Marcar como resuelta'}"><input type="checkbox" data-note-done="${n.id}"${n.done ? ' checked' : ''} aria-label="Resuelta"></label>
-      <button type="button" class="nrow-go" data-note="${n.id}"><span class="note-n">${noteIcon(n)}${n.n}</span>
-        <span class="nrow-body"><b>${esc(noteScopeLabel(n))}</b><span>${esc(n.text)}</span></span></button></div>`).join('');
+      <button type="button" class="nrow-go" data-note="${n.id}"><span class="note-n${tipoCls(n)}">${noteIcon(n)}${n.n}</span>
+        <span class="nrow-body"><b>${esc(noteScopeLabel(n))} <span class="note-etq">${etqNota(n)}</span></b><span>${esc(n.text)}</span></span></button></div>`).join('');
 }
 $('#notes-list').addEventListener('change', (e) => {
   if (e.target.matches('input[data-note-done]')) setNoteDone(+e.target.dataset.noteDone, e.target.checked);
@@ -2760,17 +2985,21 @@ function notesBlockHTML(ids) {
   const seen = new Set(), list = [];
   for (const i of ids) for (const n of pieceNotes.get(i) || []) if (!seen.has(n.id)) { seen.add(n.id); list.push(n); }
   list.sort((a, b) => a.n - b.n);
-  const editor = () => `<textarea id="note-text" rows="3" maxlength="800" placeholder="Ej.: unir con Rafix · dejar 2 mm de luz · cambiar el tirador">${esc(noteEdit.draft || '')}</textarea>
+  const tipoEd = noteEdit ? (noteEdit.tipo || 'nota') : 'nota';
+  const etapas = almacen && almacen.etapas ? almacen.etapas : [];
+  const tipos = () => `<div class="note-tipos">${TIPOS_NOTA.map(([k, t]) => `<button type="button" class="t-${k}${tipoEd === k ? ' on' : ''}" data-act="note-tipo" data-tipo="${k}">${t}</button>`).join('')}
+    ${etapas.length && tipoEd !== 'nota' ? `<select id="note-etapa" aria-label="Etapa"><option value="">Sin etapa</option>${etapas.map((e) => `<option value="${e.id}"${noteEdit && noteEdit.etapa === e.id ? ' selected' : ''}>${esc(e.txt)}</option>`).join('')}</select>` : ''}</div>`;
+  const editor = () => tipos() + `<textarea id="note-text" rows="3" maxlength="800" placeholder="Ej.: unir con Rafix · dejar 2 mm de luz · cambiar el tirador">${esc(noteEdit.draft || '')}</textarea>
     <div class="note-ed"><button type="button" class="btn small primary" data-act="note-save">Guardar</button><button type="button" class="btn small" data-act="note-cancel">Cancelar</button><span class="note-hint">Ctrl+Enter guarda</span></div>`;
   const items = list.map((n) => {
     const editing = noteEdit && noteEdit.mode === 'edit' && noteEdit.id === n.id;
-    return `<li class="note${n.done ? ' done' : ''}">
-      <div class="note-top"><span class="note-n">${noteIcon(n)}${n.n}</span><span class="note-scope">${esc(noteScopeLabel(n))}</span></div>
+    return `<li class="note${n.done ? ' done' : ' t-' + tipoDe(n)}">
+      <div class="note-top"><span class="note-n${tipoCls(n)}">${noteIcon(n)}${n.n}</span><span class="note-scope">${esc(noteScopeLabel(n))}</span><span class="note-etq">${etqNota(n)}</span></div>
       ${editing ? editor() : `<p class="note-text">${esc(n.text)}</p>
       <div class="note-foot">
         <label class="note-check"><input type="checkbox" data-note-done="${n.id}"${n.done ? ' checked' : ''}> ${n.done ? 'Resuelto' : 'Marcar como resuelto'}${n.done && n.doneAt ? ` <span class="note-when">${esc(whenText(n.doneAt))}</span>` : ''}</label>
-        <span class="note-acts"><button type="button" class="link" data-act="note-edit" data-note="${n.id}">Editar</button><button type="button" class="link" data-act="note-del" data-note="${n.id}">Borrar</button></span>
-      </div>`}</li>`;
+        ${puedeEditarNota(n) ? `<span class="note-acts"><button type="button" class="link" data-act="note-edit" data-note="${n.id}">Editar</button><button type="button" class="link" data-act="note-del" data-note="${n.id}">Borrar</button></span>` : ''}
+      </div>${firmaNota(n)}`}</li>`;
   }).join('');
   const adding = noteEdit && noteEdit.mode === 'add';
   return `<div class="notes">${list.length ? `<ul class="note-list">${items}</ul>` : ''}
@@ -2779,7 +3008,7 @@ function notesBlockHTML(ids) {
 }
 function startNoteAdd() {
   if (!model || !sel.size || measuring) return;
-  noteEdit = { mode: 'add', ids: [...sel].sort((a, b) => a - b), draft: '' };
+  noteEdit = { mode: 'add', ids: [...sel].sort((a, b) => a - b), draft: '', tipo: 'nota', etapa: almacen ? (almacen.etapaActual || null) : null };
   if (isSheetLayout()) { if (sideEl.dataset.sheet === 'min') setSheet('mid'); sideEl.scrollTop = 0; }
   renderCard();
 }
@@ -2789,10 +3018,18 @@ function saveNoteEdit() {
   if (!text) { noteEdit = null; renderCard(); return; }
   if (noteEdit.mode === 'add') {
     saveUndo('Anotación nueva');
-    notes.push({ id: ++noteUid, n: ++noteSeq, text, scope: scopeFor(noteEdit.ids), at: Date.now(), pieces: noteEdit.ids.slice() });
+    const tipo = noteEdit.tipo || 'nota';
+    const nota = { id: ++noteUid, uuid: nuevoIdNota(), n: ++noteSeq, text, scope: scopeFor(noteEdit.ids), at: Date.now(), pieces: noteEdit.ids.slice(),
+      tipo, etapa: tipo === 'nota' ? null : (noteEdit.etapa || null), autor: almacen ? almacen.usuario.nombre : '', autorId: almacen ? almacen.usuario.id : null };
+    notes.push(nota);
+    if (almacen) avisoAlmacen(almacen.guardar(notaParaGuardar(nota)));
   } else {
     const n = notes.find((x) => x.id === noteEdit.id);
-    if (n && n.text !== text) { saveUndo(`Editar la anotación ${n.n}`); n.text = text; n.at = Date.now(); }
+    const tipo = noteEdit.tipo || tipoDe(n || {}), etapa = tipo === 'nota' ? null : (noteEdit.etapa || null);
+    if (n && (n.text !== text || tipoDe(n) !== tipo || (n.etapa || null) !== etapa)) {
+      saveUndo(`Editar la anotación ${n.n}`); n.text = text; n.tipo = tipo; n.etapa = etapa;
+      if (almacen) avisoAlmacen(almacen.guardar(notaParaGuardar(n)));
+    }
   }
   noteEdit = null;
   notesChanged();
@@ -2800,8 +3037,10 @@ function saveNoteEdit() {
 }
 function deleteNote(id) {
   const n = notes.find((x) => x.id === id); if (!n) return;
+  if (!puedeEditarNota(n)) { toast('Solo quien escribió la anotación (o un jefe) puede borrarla.', 'error'); return; }
   saveUndo(`Borrar la anotación ${n.n}`);
   notes = notes.filter((x) => x.id !== id);
+  if (almacen) avisoAlmacen(almacen.borrar(n.uuid));
   if (noteEdit && noteEdit.id === id) noteEdit = null;
   notesChanged();
   renderCard();
@@ -2819,8 +3058,10 @@ function captureState() {
     layerColors: model.layers.map((L) => (L.custom ? L.hex : null)),
     cotas: cotas.map((c) => ({ n: c.n, tag: c.tag, a: c.a.clone(), b: c.b.clone(), real: (c.real || c.b).clone(), value: c.value, axis: c.axis, d: c.d.slice() })),
     cotaN,
-    notes: notes.map((n) => ({ id: n.id, n: n.n, text: n.text, scope: n.scope, at: n.at, done: !!n.done, doneAt: n.doneAt || null, pieces: n.pieces.slice() })),
+    notes: almacen ? null : notes.map((n) => ({ ...n, pin: undefined, center: undefined, pieces: n.pieces.slice() })),
     noteSeq,
+    // Cerebrus: dónde está cada módulo (así Ctrl+Z también deshace los movimientos y giros)
+    modulos: hayModulos() ? model.modulos.map((u) => [u.group.position.x, u.group.position.y, u.group.position.z, u.group.rotation.z]) : null,
   };
 }
 function pushUndo(label, state) {
@@ -2841,8 +3082,19 @@ function restoreState(s) {
   for (const c of s.cotas) addCota(c.a, { end: c.b, real: c.real, axis: c.axis, value: c.value, d: c.d }, c.n, c.tag);
   cotaN = s.cotaN;
   updateMeasureBtn();
-  notes = (s.notes || []).map((n) => ({ ...n, pieces: n.pieces.slice() }));
-  noteSeq = s.noteSeq || 0; noteEdit = null;
+  if (s.notes) { notes = s.notes.map((n) => ({ ...n, pieces: n.pieces.slice() })); noteSeq = s.noteSeq || 0; }
+  // Cerebrus: volver los módulos a donde estaban (y avisarle a Cerebrus para que lo guarde)
+  if (s.modulos && hayModulos()) {
+    let moved = false;
+    model.modulos.forEach((u, k) => {
+      const t = s.modulos[k]; if (!t) return;
+      const g = u.group;
+      if (g.position.x !== t[0] || g.position.y !== t[1] || g.position.z !== t[2] || g.rotation.z !== t[3]) moved = true;
+      g.position.set(t[0], t[1], t[2]); g.rotation.z = t[3]; g.updateMatrixWorld(true);
+    });
+    if (moved) savePositions();
+  }
+  noteEdit = null;
   notesChanged();
   applyVisibility();
   for (const i of [...sel]) if (!model.pieces[i].mesh.visible) sel.delete(i);
@@ -2876,6 +3128,7 @@ $('#btn-undo').addEventListener('click', undo);
 $('#btn-redo').addEventListener('click', redo);
 function setMeasure(on) {
   if (on && !model) return;
+  if (on && moveMode) setMoveMode(false);   // Cerebrus
   measuring = on; pendingA = null;
   if (on && boxMode) setBoxMode(false);
   hideTemp(); showSnap(null);
@@ -2960,6 +3213,7 @@ function oneFingerMode() {
 function setBoxMode(on) {
   boxMode = on;
   if (on && measuring) setMeasure(false);
+  if (on && moveMode) setMoveMode(false);   // Cerebrus
   $('#btn-boxsel').setAttribute('aria-pressed', String(on));
   controls.touches.ONE = oneFingerMode();
   if (on) toast('Selección: arrastrá un dedo. Hacia la derecha elige lo que queda adentro; hacia la izquierda, todo lo que toca. Con dos dedos movés y acercás.');
@@ -3021,6 +3275,7 @@ function startPrintPick() {
   if (!model) return;
   closePrintDialog();
   if (measuring) setMeasure(false);
+  if (moveMode) setMoveMode(false);   // Cerebrus
   closeColorPop();
   setHover(null); tipEl.hidden = true;
   printPick = { start: null };
@@ -3200,6 +3455,196 @@ $('#pm-print').addEventListener('click', doPrint);
 $('#btn-print')?.addEventListener('click', () => (printPick ? endPrintPick() : startPrintPick()));
 
 /* ---------------------------------------------------------------------
+   Cerebrus: cocina del presupuesto — ubicar los módulos (traído del visor viejo del Cotizator)
+   Solo con abrirModelo(m, { mover:true, guardarPosiciones, posicionesAutomaticas }).
+   Cada módulo se agarra entero. Imán de 4 cm a los bordes de los otros módulos, a la pared
+   (Y = 0) y al piso; nunca por debajo del piso. En Planta o Perspectiva se arrastra sobre el
+   piso; en Frente/Atrás y en los costados, sube y baja. Todo lo que se mueve se le pasa a
+   Cerebrus (guardarPosiciones) y se puede deshacer con Ctrl+Z.
+   pos (lo que Cerebrus guarda en item.pos3d): x = izq→der · y = altura desde el piso ·
+   z = distancia a la pared · r = giro (°). Pared = plano Y = 0; los módulos quedan en Y negativa.
+   --------------------------------------------------------------------- */
+const IMAN = 40;   // mm
+const PASO = 10;   // mm: el arrastre se mueve de a 1 cm
+function setUnitPos(u, pos) {
+  const p = pos || { x: 0, y: 0, z: 0, r: 0 };
+  u.group.position.set(+p.x || 0, -(+p.z || 0), +p.y || 0);
+  u.group.rotation.set(0, 0, THREE.MathUtils.degToRad(+p.r || 0));
+  u.group.updateMatrixWorld(true);
+}
+function unitPos(u) {
+  const g = u.group.position;
+  const r = Math.round(THREE.MathUtils.radToDeg(u.group.rotation.z));
+  return { x: Math.round(g.x) + 0, y: Math.round(g.z) + 0, z: Math.round(-g.y) + 0, r: ((((r + 180) % 360) + 360) % 360) - 180 };
+}
+function unitBox(u) {
+  const b = new THREE.Box3();
+  for (const p of u.pieces) b.expandByObject(p.mesh);
+  return b;
+}
+function blockBox(us) { const b = new THREE.Box3(); us.forEach((u) => b.union(unitBox(u))); return b; }
+function selUnits() {
+  if (!hayModulos()) return [];
+  const ks = new Set();
+  for (const i of sel) ks.add(model.pieces[i].mod);
+  return [...ks].sort((a, b) => a - b).map((k) => model.modulos[k]);
+}
+// elegir módulos enteros (sus piezas a la vista)
+function pickUnits(us, mode = 'replace') {
+  noteEdit = null;
+  if (mode === 'replace') sel.clear();
+  for (const u of us) {
+    const on = mode === 'toggle' && u.pieces.some((p) => sel.has(p.i));
+    for (const p of u.pieces) { if (on) sel.delete(p.i); else if (p.mesh.visible) sel.add(p.i); }
+  }
+  refreshSelection();
+}
+function savePositions() {
+  if (notes.length) renderPins();   // los globitos de las notas siguen a su módulo
+  if (!puedeMover() || !model.cb.guardarPosiciones) return;
+  try { model.cb.guardarPosiciones(model.modulos.map((u) => ({ ref: u.ref, pos: unitPos(u) }))); }
+  catch (e) { console.error(e); toast('No se pudo guardar la ubicación de los módulos.', 'error'); }
+}
+function setMoveMode(on) {
+  on = !!(on && puedeMover());
+  if (on === moveMode) return;
+  if (on) { if (measuring) setMeasure(false); if (boxMode) setBoxMode(false); if (printPick) endPrintPick(); }
+  if (modDrag) cancelModDrag();
+  moveMode = on;
+  $('#btn-move').setAttribute('aria-pressed', String(on));
+  stageEl.classList.toggle('moving', on);
+  setHover(null);
+  // al entrar, lo elegido pasa a ser el módulo entero
+  if (on && sel.size) pickUnits(selUnits()); else refreshSelection();
+  if (on) { lowerSheet(); toast('Arrastrá un módulo para moverlo. Ctrl o Shift + click suma módulos al bloque. R gira 90°.'); }
+}
+function startModDrag(e, hit) {
+  const p = hit.object.userData.piece, u = model.modulos[p.mod];
+  const add = e.ctrlKey || e.metaKey || e.shiftKey;
+  const has = u.pieces.some((q) => sel.has(q.i));
+  if (add) { pickUnits([u], 'toggle'); if (has) return; }
+  else if (!has) pickUnits([u]);
+  const us = selUnits();
+  if (!us.length) return;
+  // plano de arrastre: el piso, salvo mirando de frente o de costado (ahí sube y baja)
+  const dir = cam.getWorldDirection(new THREE.Vector3());
+  let plane, axes;
+  if (Math.abs(dir.z) > 0.08) { plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -hit.point.z); axes = ['x', 'y']; }
+  else if (Math.abs(dir.y) >= Math.abs(dir.x)) { plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), hit.point); axes = ['x', 'z']; }
+  else { plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(1, 0, 0), hit.point); axes = ['y', 'z']; }
+  modDrag = {
+    pid: e.pointerId, plane, axes, ini: hit.point.clone(), moved: false, units: us,
+    orig: us.map((q) => q.group.position.clone()),
+    box0: blockBox(us),
+    others: model.modulos.filter((o) => !us.includes(o) && o.pieces.some((q) => q.mesh.visible)).map(unitBox),
+    minZ0: Math.min(...us.map((q) => q.group.position.z)),
+    state: captureState(),
+  };
+}
+function moveModDrag(e) {
+  const dr = modDrag;
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  cam.updateMatrixWorld();
+  ray.setFromCamera(ndc, cam);
+  const pt = ray.ray.intersectPlane(dr.plane, new THREE.Vector3()); if (!pt) return;
+  const d = { x: 0, y: 0, z: 0 };
+  for (const a of dr.axes) d[a] = Math.round((pt[a] - dr.ini[a]) / PASO) * PASO;
+  // imán: los bordes del bloque se pegan a los de otro módulo, a la pared o al piso
+  for (const a of dr.axes) {
+    let best = Infinity;
+    const edges = [dr.box0.min[a] + d[a], dr.box0.max[a] + d[a]];
+    const lines = [];
+    dr.others.forEach((o) => lines.push(o.min[a], o.max[a]));
+    if (a === 'y') lines.push(0);   // pared
+    for (const L of lines) for (const s of edges) { const k = L - s; if (Math.abs(k) < Math.abs(best)) best = k; }
+    if (a === 'z') { const k = -(dr.minZ0 + d.z); if (Math.abs(k) < Math.abs(best)) best = k; }   // piso
+    if (Math.abs(best) <= IMAN) d[a] += best;
+  }
+  if (dr.minZ0 + d.z < 0) d.z = -dr.minZ0;   // nunca por debajo del piso
+  dr.units.forEach((u, k) => { const o = dr.orig[k]; u.group.position.set(o.x + d.x, o.y + d.y, o.z + d.z); u.group.updateMatrixWorld(true); });
+  dr.moved = dr.moved || !!(d.x || d.y || d.z);
+  tipEl.hidden = true;
+  updateMeasureLabels();
+  requestRender();
+}
+function endModDrag() {
+  const dr = modDrag; modDrag = null;
+  if (!dr || !dr.moved) return;
+  pushUndo(dr.units.length === 1 ? `Mover ${dr.units[0].name}` : `Mover ${dr.units.length} módulos`, dr.state);
+  savePositions(); rebuildGrid(); renderCard(); requestRender();
+}
+function cancelModDrag() {
+  const dr = modDrag; modDrag = null;
+  if (!dr) return;
+  dr.units.forEach((u, k) => { u.group.position.copy(dr.orig[k]); u.group.updateMatrixWorld(true); });
+  requestRender();
+}
+function rotateSel(deg) {
+  if (!puedeMover()) return;
+  const us = selUnits();
+  if (!us.length) { toast('Elegí primero uno o más módulos para girarlos.'); return; }
+  saveUndo(`Girar ${us.length === 1 ? us[0].name : us.length + ' módulos'} ${Math.abs(deg)}°`);
+  const b = blockBox(us), c = b.getCenter(new THREE.Vector3());
+  const a = THREE.MathUtils.degToRad(deg), axis = new THREE.Vector3(0, 0, 1);
+  us.forEach((u) => {
+    const v = u.group.position.clone().sub(c); v.z = 0;
+    v.applyAxisAngle(axis, a);
+    u.group.position.x = c.x + v.x; u.group.position.y = c.y + v.y;
+    u.group.rotation.z += a;
+    u.group.updateMatrixWorld(true);
+  });
+  // que el bloque no se meta en la pared ni se corra: conserva su esquina izquierda y su lado de la pared
+  const b2 = blockBox(us);
+  const dx = b.min.x - b2.min.x, dy = b.max.y - b2.max.y;
+  us.forEach((u) => {
+    u.group.position.x = Math.round(u.group.position.x + dx);
+    u.group.position.y = Math.round(u.group.position.y + dy);
+    u.group.updateMatrixWorld(true);
+  });
+  savePositions(); rebuildGrid(); renderCard(); requestRender();
+}
+// campos de la ficha: x = desde la izquierda · h = altura del piso · w = separado de la pared
+function setSelPos(which, value) {
+  const us = selUnits();
+  if (!us.length || !Number.isFinite(value)) { renderCard(); return; }
+  const b = blockBox(us);
+  let key, d;
+  if (which === 'x') { key = 'x'; d = value - b.min.x; }
+  else if (which === 'h') {
+    key = 'z'; d = value - b.min.z;
+    const minZ = Math.min(...us.map((u) => u.group.position.z));
+    if (minZ + d < 0) d = -minZ;   // nunca por debajo del piso
+  } else { key = 'y'; d = -value - b.max.y; }
+  if (Math.abs(d) < 0.5) { renderCard(); return; }
+  const lbl = { x: 'desde la izquierda', h: 'altura', w: 'distancia a la pared' }[which];
+  saveUndo(`Ubicar ${us.length === 1 ? us[0].name : us.length + ' módulos'} (${lbl})`);
+  us.forEach((u) => { u.group.position[key] += d; u.group.updateMatrixWorld(true); });
+  savePositions(); rebuildGrid(); renderCard(); requestRender();
+}
+function reacomodar() {
+  if (!puedeMover() || !model.cb.posicionesAutomaticas) return;
+  if (!confirm('¿Volver a acomodar todos los módulos automáticamente, de izquierda a derecha?\n\nSe pierde la ubicación que hiciste a mano (el presupuesto no cambia). Se puede deshacer con Ctrl+Z.')) return;
+  const list = model.cb.posicionesAutomaticas();
+  if (!list) return;
+  saveUndo('Reacomodar automático');
+  model.modulos.forEach((u, k) => { if (list[k]) setUnitPos(u, list[k]); });
+  savePositions(); rebuildGrid(); renderCard(); fitAll();
+  toast('Listo: los módulos quedaron acomodados de izquierda a derecha.');
+}
+$('#btn-move').addEventListener('click', () => setMoveMode(!moveMode));
+document.querySelectorAll('[data-rot]').forEach((b) => b.addEventListener('click', () => rotateSel(+b.dataset.rot)));
+$('#btn-reacomodar').addEventListener('click', reacomodar);
+document.querySelectorAll('[data-filt]').forEach((b) => b.addEventListener('click', () => {
+  if (!model) return;
+  filt[b.dataset.filt] = !filt[b.dataset.filt];
+  b.setAttribute('aria-pressed', String(filt[b.dataset.filt]));
+  applyVisibility();
+  for (const i of [...sel]) if (!model.pieces[i].mesh.visible) sel.delete(i);
+  refreshSelection();
+}));
+
+/* ---------------------------------------------------------------------
    Teclado
    --------------------------------------------------------------------- */
 document.addEventListener('keydown', (e) => {
@@ -3218,7 +3663,17 @@ document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'shift') { if (measuring && lastPtr && !e.repeat) measureMove(lastPtr.x, lastPtr.y, true); return; }
   if (k === 'm') setMeasure(!measuring);
-  else if (k === 'escape') { if (boxDrag) { endBox(); down = null; } else if (measuring && pendingA) cancelPending(); else if (measuring) setMeasure(false); else clearSelection(); }
+  else if (k === 'escape') {
+    // Cerebrus: de a un paso (soltar el arrastre, dejar de mover…); sin nada pendiente, Cerebrus puede cerrar Iris
+    if (modDrag) cancelModDrag();
+    else if (boxDrag) { endBox(); down = null; } else if (measuring && pendingA) cancelPending(); else if (measuring) setMeasure(false);
+    else if (sel.size) clearSelection();
+    else if (moveMode) setMoveMode(false);
+    else if (model.cb && model.cb.cerrar) model.cb.cerrar();
+    else clearSelection();
+  }
+  else if (k === 'g' && puedeMover()) setMoveMode(!moveMode);   // Cerebrus
+  else if (k === 'r' && puedeMover()) rotateSel(e.shiftKey ? 90 : -90);   // Cerebrus
   else if (measuring && (k === 'delete' || k === 'backspace')) { if (cotas.length) deleteCota(cotas.length - 1); }
   else if (k === 'h' || k === 'delete') hideSelected();
   else if (k === 'i') isolateSelected();
@@ -3534,8 +3989,9 @@ function planoBytes(name, withState, withNotes) {
   modelRoot.updateMatrixWorld(true);
   for (const p of m.pieces) {
     P.set(p.positions, ov);
-    if (rot) for (let j = ov; j < ov + p.positions.length; j += 3) {
-      _v.set(P[j], P[j + 1], P[j + 2]).applyMatrix4(modelRoot.matrixWorld); P[j] = _v.x; P[j + 1] = _v.y; P[j + 2] = _v.z;
+    const mw = hayModulos() ? p.mesh.matrixWorld : modelRoot.matrixWorld;   // Cerebrus: piezas dentro de su módulo → a coordenadas de la obra
+    if (rot || hayModulos()) for (let j = ov; j < ov + p.positions.length; j += 3) {
+      _v.set(P[j], P[j + 1], P[j + 2]).applyMatrix4(mw); P[j] = _v.x; P[j + 1] = _v.y; P[j + 2] = _v.z;
     }
     ov += p.positions.length;
     if (p.index) { I.set(p.index, oi); oi += p.index.length; }
@@ -3733,7 +4189,7 @@ async function openFiles(list) {
   const bufs = await Promise.all(files.map(async (f) => ({ name: f.name, data: await f.arrayBuffer() })));
   if (await openBuffers(bufs)) addRecent(bufs);
 }
-async function openBuffers(bufs) {
+async function openBuffers(bufs, siYaHayOtro) {   // Cerebrus: siYaHayOtro() → true = no pisar el modelo que ya abrió Cerebrus
   const main = bufs.find((b) => /\.3dm$/i.test(b.name)) || bufs.find((b) => /\.obj$/i.test(b.name)) || bufs.find((b) => /\.html?$/i.test(b.name));
   if (!main) return false;
   try {
@@ -3754,6 +4210,7 @@ async function openBuffers(bufs) {
     }
     if (!m.pieces.length) throw userErr('Ese archivo no tiene piezas para mostrar: solo líneas, textos o cotas. Guardá el modelo con las piezas sólidas.');
     setLoading('Dibujando…'); await tick();
+    if (siYaHayOtro && siYaHayOtro()) return false;   // Cerebrus
     showModel(m);
     if (m.sharedState) applySharedState(m.sharedState);
     return true;
@@ -3764,7 +4221,81 @@ async function openBuffers(bufs) {
   } finally { stopLoading(); }
 }
 
-window.__visor = { openFiles, openBuffers, snapAt, isVisible, makeSharedFile, get model() { return model; }, get cam() { return cam; }, controls, sel };
+/* Cerebrus: compartir las anotaciones de una obra (Supabase, en vivo).
+   alm = { usuario:{id,nombre}, etapas:[{id,txt}], etapaActual, cargar(), guardar(nota), resolver(uuid,done),
+           borrar(uuid), puedeEditar(nota), escuchar(alCambiar) → cortar } */
+function desconectarAlmacen() {
+  if (almacenCorte) { try { almacenCorte(); } catch (e) { /* nada */ } }
+  almacen = null; almacenCorte = null;
+}
+async function conectarAlmacen(alm) {
+  desconectarAlmacen();
+  if (!model || !alm) return false;
+  almacen = alm;
+  const lista = await alm.cargar();
+  if (almacen !== alm) return false;
+  notes = notesFromSaved(lista);
+  noteSeq = notes.reduce((mx, n) => Math.max(mx, n.n || 0), 0);
+  noteEdit = null;
+  notesChanged(false); renderCard();
+  almacenCorte = alm.escuchar((c) => {
+    if (almacen !== alm || !model) return;
+    const i = notes.findIndex((x) => x.uuid === (c.uuid || (c.nota && c.nota.uuid)));
+    if (c.borrada) { if (i >= 0) notes.splice(i, 1); }
+    else if (c.nota) {
+      const [nueva] = notesFromSaved([c.nota]);
+      if (!nueva) return;
+      if (i >= 0) { nueva.id = notes[i].id; notes[i] = nueva; } else notes.push(nueva);
+      noteSeq = Math.max(noteSeq, nueva.n || 0);
+    }
+    notesChanged(false);
+    if (!noteEdit) renderCard();
+  });
+  return true;
+}
+/* Cerebrus: abrir un modelo armado en memoria por Cerebrus (la cocina del presupuesto, un módulo suelto).
+   m = { fileName, meta?, badge?, notice?, shareStamp? (con fileName, la llave de las notas locales),
+         layers:[{name,path,color:[r,g,b]}],
+         pieces:[{ name, layer, userText, mod (índice del módulo), esPuerta?, esFondo?, uid?, positions, index }],
+         modulos?:[{ name, pos:{x,y,z,r}, cat:'piso'|'alta'|'col', ref, medidas, info }] }
+   opciones = { mover:true → "Mover módulos" y "Reacomodar" ·
+                guardarPosiciones(lista [{ref,pos}]) · posicionesAutomaticas() → [pos] · cerrar() (Esc) }
+   Los números se copian a arreglos de esta ventana (three.js no acepta los de la página de afuera). */
+function abrirModelo(m, opciones = {}) {
+  if (!m || !m.pieces || !m.pieces.length) return false;
+  const mod = {
+    fileName: m.fileName || 'Modelo', format: m.format || 'Cerebrus', units: 'mm', toMM: 1,
+    meta: m.meta || '', badge: m.badge || '', notice: m.notice || '', shareStamp: m.shareStamp || null,
+    layers: m.layers.map((L) => ({ name: L.name, path: L.path || L.name, color: [...L.color], visible: L.visible !== false })),
+    pieces: m.pieces.map((p) => ({
+      name: p.name, layer: p.layer, color: p.color ? [...p.color] : null, groups: [], approx: false, block: false,
+      userText: (p.userText || []).map(([k, v]) => [String(k), String(v)]), uid: p.uid || undefined,
+      mod: +p.mod || 0, esPuerta: !!p.esPuerta, esFondo: !!p.esFondo,
+      positions: Float32Array.from(p.positions), index: p.index ? Uint32Array.from(p.index) : null,
+    })),
+    modulos: Array.isArray(m.modulos) && m.modulos.length ? m.modulos.map((u) => ({
+      name: String(u.name || ''), cat: u.cat || '', ref: u.ref, medidas: u.medidas || '', info: u.info || '',
+      pos: u.pos ? { x: +u.pos.x || 0, y: +u.pos.y || 0, z: +u.pos.z || 0, r: +u.pos.r || 0 } : null,
+    })) : null,
+    cb: { ...opciones },
+  };
+  closeColorPop(); closePrintDialog(); closeShareModal(); closeOpenModal();
+  if (printPick) endPrintPick();
+  resize();
+  showModel(mod);
+  return true;
+}
+// Cerebrus: al cerrar Iris desde Cerebrus, soltar lo que esté a medio hacer
+function soltarTodo() {
+  if (modDrag) endModDrag();
+  closeColorPop(); closePrintDialog();
+  if (printPick) endPrintPick();
+  if (measuring) setMeasure(false);
+  setMoveMode(false);
+  tipEl.hidden = true; setHover(null);
+}
+window.__visor = { conectarAlmacen, desconectarAlmacen, openFiles, openBuffers, snapAt, isVisible, makeSharedFile, get model() { return model; }, get cam() { return cam; }, controls, sel,
+  abrirModelo, soltarTodo };   // Cerebrus: abrirModelo, soltarTodo
 
 /* ---------------------------------------------------------------------
    Arranque
@@ -3775,14 +4306,19 @@ renderCard();
 (async () => {
   // un archivo compartido trae su plano adentro: se abre ese
   if (await loadEmbeddedPlano()) return;
+  // Cerebrus: si mientras arranca Cerebrus ya abrió un modelo (obra, presupuesto), no se lo pisa
+  const seq0 = modelSeq, yaHayOtro = () => modelSeq !== seq0;
   // si no, se abre el último modelo que se vio en este equipo
   const idx = (await store.get('recientes')) || [];
+  if (yaHayOtro()) return;   // Cerebrus
   if (idx.length) {
     const bufs = await store.get('rec:' + idx[0].id);
-    if (bufs && (await openBuffers(bufs))) return;
+    if (bufs && (await openBuffers(bufs, yaHayOtro))) return;
   }
+  if (yaHayOtro()) return;   // Cerebrus
   const last = await store.get('ultimo');   // guardado por la versión anterior del visor
-  if (last?.files?.length && (await openBuffers(last.files))) { await addRecent(last.files); store.del('ultimo'); return; }
+  if (last?.files?.length && (await openBuffers(last.files, yaHayOtro))) { await addRecent(last.files); store.del('ultimo'); return; }
+  if (yaHayOtro()) return;   // Cerebrus
   const s = sampleModel();
   if (s) showModel(s);
   else { $('#empty').hidden = false; $('#file-name').textContent = 'Sin modelo'; }

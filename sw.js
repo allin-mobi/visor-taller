@@ -4,7 +4,7 @@
    - Las bibliotecas de afuera (three.js, rhino3dm, tipografías) se guardan la primera vez y después
      se usan desde el teléfono.
    Los planos ya abiertos quedan en el teléfono (Iris los guarda en "Recientes"). */
-const CAJON = 'iris-v3';   // v3: íconos con nombre nuevo (sin copias viejas guardadas)
+const CAJON = 'iris-v4';   // v4: compartir por enlace
 const BASICO = ['./', 'index.html', 'iris-app.webmanifest', 'iris-app-180.png', 'iris-app-192.png', 'iris-app-512.png'];
 
 self.addEventListener('install', e=>{

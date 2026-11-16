@@ -801,7 +801,7 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
     <div class="modal-box share-box">
       <div class="modal-head"><h2 id="sm-h">Compartir plano</h2><button class="x" type="button" id="sm-close" aria-label="Cerrar">×</button></div>
       <div class="om-body">
-        <p class="sm-lead">Se arma un archivo para mandar por WhatsApp o mail. Quien lo abra ve este plano directo en el visor, sin cargar nada.</p>
+        <p class="sm-lead">Mandá un <b>enlace</b> por WhatsApp o mail: quien lo toque ve este plano directo en Iris (si tiene la app instalada, se abre en la app). También podés armar un archivo, como antes.</p><!-- Cerebrus: compartir por enlace -->
         <label class="field" for="sm-name"><span>Nombre del archivo</span><input type="text" id="sm-name" autocomplete="off"></label>
         <label class="check"><input type="checkbox" id="sm-state" checked> Que lo vea como lo tengo ahora: cotas, colores, piezas ocultas y la vista</label>
         <label class="check" id="sm-notes-row"><input type="checkbox" id="sm-notes" checked> Incluir las anotaciones (<span id="sm-notes-n"></span>)</label>
@@ -811,7 +811,8 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
       <div class="modal-foot">
         <span class="spacer"></span>
         <button class="btn" type="button" id="sm-cancel">Cerrar</button>
-        <button class="btn primary" type="button" id="sm-make">Crear archivo</button>
+        <button class="btn" type="button" id="sm-make">Crear archivo</button>
+        <button class="btn primary" type="button" id="sm-link">📲 Mandar enlace</button><!-- Cerebrus -->
       </div>
     </div>
   </div>
@@ -4160,6 +4161,61 @@ $('#sm-make').addEventListener('click', async () => {
   }
 });
 
+/* Cerebrus: compartir por ENLACE (supabase/013). El plano se sube como datos (.json) con un nombre
+   al azar al depósito público "compartidos"; el enlace abre Iris (la app, si está instalada). */
+const CB_SUPA = 'https://fsixqqgrpepvbjqxyqnz.supabase.co';
+const CB_CLAVE = 'sb_publishable_iJQtsTOXGSragPznVo-14Q_vREz5HtX';   // pública a propósito (solo la puerta de entrada)
+const CB_APP = 'https://allin-mobi.github.io/visor-taller/';
+async function subirCompartido(name, withState, withNotes) {
+  const pk = await packBytes(planoBytes(name, withState, withNotes));
+  const id = crypto.randomUUID();
+  const r = await fetch(CB_SUPA + '/storage/v1/object/compartidos/' + id + '.json', {
+    method: 'POST', headers: { apikey: CB_CLAVE, 'Content-Type': 'application/json', 'x-upsert': 'false' },
+    body: JSON.stringify({ v: 1, nombre: name, pk }),
+  });
+  if (!r.ok) throw new Error('subida ' + r.status + ' ' + (await r.text().catch(() => '')));
+  return CB_APP + '?plano=' + id;
+}
+async function abrirCompartido(id) {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return false;
+  try {
+    setLoading('Abriendo el plano compartido…'); await tick();
+    const r = await fetch(CB_SUPA + '/storage/v1/object/public/compartidos/' + id + '.json');
+    if (!r.ok) throw userErr('No encontré ese plano: puede que el enlace esté incompleto.');
+    const j = await r.json();
+    const m = parsePlano(await unpackBytes(j.pk));
+    showModel(m);
+    applySharedState(m.sharedState);
+    return true;
+  } catch (e) {
+    console.error(e);
+    toast(e.userMsg || 'No pude abrir el plano del enlace. Revisá la conexión o pedí que te lo manden de nuevo.', 'error');
+    return false;
+  } finally { stopLoading(); }
+}
+$('#sm-link')?.addEventListener('click', async () => {
+  const btn = $('#sm-link'), out = $('#sm-result');
+  const name = safeName($('#sm-name').value);
+  btn.disabled = true; btn.textContent = 'Subiendo…';
+  out.hidden = true; out.classList.remove('err');
+  try {
+    const link = await subirCompartido(name, $('#sm-state').checked, notes.length > 0 && $('#sm-notes').checked);
+    let compartido = false;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Plano ' + name, text: 'Plano "' + name + '" en Iris:', url: link }); compartido = true; }
+      catch (e) { if (e && e.name === 'AbortError') compartido = true; }
+    }
+    if (!compartido) { try { await navigator.clipboard.writeText(link); } catch (e) { /* sin portapapeles */ } }
+    out.innerHTML = (compartido ? 'Listo. ' : 'Enlace copiado: pegalo en WhatsApp o mail. ') + 'Quien lo toque ve el plano en Iris.<br><a href="' + link + '" target="_blank" rel="noopener" style="word-break:break-all">' + link + '</a>';
+  } catch (e) {
+    console.error(e);
+    out.textContent = 'No pude subir el plano para mandarlo por enlace. Revisá la conexión; si sigue, usá "Crear archivo".';
+    out.classList.add('err');
+  } finally {
+    out.hidden = false; btn.disabled = false; btn.textContent = '📲 Mandar enlace';
+  }
+});
+
 /* arrastrar y soltar */
 let dragDepth = 0;
 const dropEl = $('#drop');
@@ -4341,6 +4397,9 @@ renderCard();
 (async () => {
   // un archivo compartido trae su plano adentro: se abre ese
   if (await loadEmbeddedPlano()) return;
+  // Cerebrus: un ENLACE compartido (?plano=…) abre ese plano
+  const planoEnlace = new URLSearchParams(location.search).get('plano');
+  if (planoEnlace && (await abrirCompartido(planoEnlace))) return;
   // Cerebrus: si mientras arranca Cerebrus ya abrió un modelo (obra, presupuesto), no se lo pisa
   const seq0 = modelSeq, yaHayOtro = () => modelSeq !== seq0;
   // si no, se abre el último modelo que se vio en este equipo

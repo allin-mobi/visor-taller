@@ -4,8 +4,8 @@
    - Las bibliotecas de afuera (three.js, rhino3dm, tipografías) se guardan la primera vez y después
      se usan desde el teléfono.
    Los planos ya abiertos quedan en el teléfono (Iris los guarda en "Recientes"). */
-const CAJON = 'iris-v1';
-const BASICO = ['./', 'index.html', 'manifest.webmanifest', 'iris-icono-180.png', 'iris-icono-512.png'];
+const CAJON = 'iris-v2';   // v2: ícono nuevo (logo centrado + IRIS)
+const BASICO = ['./', 'index.html', 'manifest.webmanifest', 'iris-icono-180.png', 'iris-icono-192.png', 'iris-icono-512.png'];
 
 self.addEventListener('install', e=>{
   e.waitUntil(caches.open(CAJON).then(c=> c.addAll(BASICO)).then(()=> self.skipWaiting()));

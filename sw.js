@@ -4,7 +4,7 @@
    - Las bibliotecas de afuera (three.js, rhino3dm, tipografías) se guardan la primera vez y después
      se usan desde el teléfono.
    Los planos ya abiertos quedan en el teléfono (Iris los guarda en "Recientes"). */
-const CAJON = 'iris-v4';   // v4: compartir por enlace
+const CAJON = 'iris-v5';   // v5: aviso de versión nueva + la página se pide revalidando
 const BASICO = ['./', 'index.html', 'iris-app.webmanifest', 'iris-app-180.png', 'iris-app-192.png', 'iris-app-512.png'];
 
 self.addEventListener('install', e=>{
@@ -19,7 +19,9 @@ self.addEventListener('fetch', e=>{
   const url = new URL(req.url);
   if(url.origin === location.origin){
     // la página: internet primero, guardada si no hay conexión
-    e.respondWith(fetch(req).then(r=>{ const copia = r.clone(); caches.open(CAJON).then(c=> c.put(req, copia)); return r; })
+    // la página: preguntando a GitHub si cambió (no la copia de 10 minutos del navegador)
+    const pedido = req.mode === 'navigate' ? fetch(req.url, { cache:'no-cache', credentials:'same-origin' }) : fetch(req);
+    e.respondWith(pedido.then(r=>{ const copia = r.clone(); caches.open(CAJON).then(c=> c.put(req, copia)); return r; })
       .catch(()=> caches.match(req).then(r=> r || caches.match('index.html'))));
     return;
   }

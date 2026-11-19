@@ -468,6 +468,38 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .note-tipos button.on.t-problema { background: #d8312b; border-color: #d8312b; color: #fff; }
 .note-tipos select { margin-left: auto; font: 13px inherit; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
 .note-firma { margin-top: 4px; font-size: 11px; color: var(--muted); }
+/* Cerebrus (18/11): fotos y dictado en las anotaciones */
+.note-media { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.note-media .btn svg { width: 16px; height: 16px; }
+.note-fotos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.note-foto { position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: var(--paper); cursor: zoom-in; }
+.note-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.note-foto .qx { position: absolute; top: 2px; right: 2px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.7); color: #fff; font: 700 14px/1 sans-serif; cursor: pointer; }
+.nrow-fotos { grid-column: 2; padding: 0 14px 10px 4px; }
+.nrow-fotos .note-fotos { margin-top: 0; }
+.nrow-fotos .note-foto { width: 48px; height: 48px; }
+.btn.dictando { background: #d8312b; border-color: #d8312b; color: #fff; }
+#foto-grande { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.9); display: flex; align-items: center; justify-content: center; padding: 16px; cursor: zoom-out; }
+#foto-grande img { max-width: 100%; max-height: 100%; border-radius: 6px; }
+#nota-rapida { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
+#nota-rapida .nr-caja { width: min(520px, 100%); max-height: 92vh; overflow: auto; box-sizing: border-box; background: var(--panel); color: var(--ink); border-radius: 16px 16px 0 0; padding: 16px 16px 20px; display: grid; gap: 12px; box-shadow: 0 -10px 40px rgba(0,0,0,.35); }
+@media (min-width: 700px) { #nota-rapida { align-items: center; } #nota-rapida .nr-caja { border-radius: 16px; } }
+#nota-rapida h3 { margin: 0; font-size: 17px; }
+#nota-rapida .nr-lbl { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+#nota-rapida .nr-foto-btn { min-height: 56px; border: 2px dashed var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font: 600 15px var(--font-ui); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+#nota-rapida .nr-foto-btn svg { width: 22px; height: 22px; }
+#nota-rapida .note-foto { width: 84px; height: 84px; }
+#nota-rapida .nr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+#nota-rapida .nr-chips button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 8px 13px; font: 600 13px var(--font-ui); cursor: pointer; }
+#nota-rapida .nr-chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+#nota-rapida .note-tipos button { padding: 8px 14px; font-size: 13px; }
+#nota-rapida .nr-voz { display: flex; align-items: center; gap: 12px; }
+#nota-rapida textarea { flex: 1; min-width: 0; box-sizing: border-box; min-height: 84px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font: 15px/1.4 var(--font-ui); resize: vertical; }
+#nota-rapida .nr-mic { width: 64px; height: 64px; border-radius: 50%; border: 0; background: #d8312b; color: #fff; cursor: pointer; flex: none; display: flex; align-items: center; justify-content: center; }
+#nota-rapida .nr-mic svg { width: 28px; height: 28px; }
+#nota-rapida .nr-mic.dictando { animation: nrlatido 1s infinite; }
+@keyframes nrlatido { 0%, 100% { box-shadow: 0 0 0 4px rgba(216,49,43,.3); } 50% { box-shadow: 0 0 0 14px rgba(216,49,43,.12); } }
+#nota-rapida .nr-pie { display: flex; gap: 8px; justify-content: flex-end; }
 .note-etq { font-size: 11px; font-weight: 600; opacity: .85; }
 .note-n.done, .note.done .note-n, .nrow.done .note-n, .note-pin.done { background: #2f9e44; }
 .note-pin.done:hover, .note-pin.done:focus-visible { background: #237a35; }
@@ -687,6 +719,11 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
           <button type="button" id="btn-undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
           <button type="button" id="btn-redo" title="Rehacer (Ctrl+Y)" aria-label="Rehacer" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
         </div>
+        <!-- Cerebrus (18/11): anotar con una foto y la voz, sin escribir (con o sin pieza elegida) -->
+        <button class="tool" type="button" id="btn-foto-nota" title="Anotar con una foto y la voz" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          <span class="tl">Foto</span>
+        </button>
         <span class="row-break" aria-hidden="true"></span>
         <button class="tool" type="button" id="btn-measure" aria-pressed="false" title="Medir distancias entre dos puntos (tecla M)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2.8 16 16 2.8 21.2 8 8 21.2Z"/><path d="m7 12 1.8 1.8M10 9l1.3 1.3M13 6l1.8 1.8"/></svg>
@@ -1956,9 +1993,11 @@ function updateSelTools() {
   const on = !!(model && sel.size);
   selToolsEl.classList.toggle('on', on);
   selToolsEl.querySelectorAll('button').forEach((b) => { b.disabled = !on; });
+  const bFoto = document.getElementById('btn-foto-nota'); if (bFoto) bFoto.disabled = !model;   // Cerebrus
   document.querySelectorAll('[data-rot]').forEach((b) => { b.disabled = !(on && puedeMover()); });   // Cerebrus
 }
-function renderCard() {
+function renderCard() { renderCard0(); hidratarFotos(cardEl); }   // Cerebrus: las fotos se cargan después
+function renderCard0() {
   updateSelTools();
   renderPeek();
   cardEl.classList.toggle('measuring', measuring);
@@ -2060,6 +2099,8 @@ cardEl.addEventListener('change', (e) => {
   setSelPos(inp.dataset.pos, parseFloat(String(inp.value).replace(',', '.')));
 });
 cardEl.addEventListener('click', (e) => {
+  const qf = e.target.closest('[data-foto-quitar]');   // Cerebrus: sacar una foto de la anotación que se está escribiendo
+  if (qf && noteEdit) { const ta = $('#note-text'); if (ta) noteEdit.draft = ta.value; (noteEdit.fotos || []).splice(+qf.dataset.fotoQuitar, 1); renderCard(); return; }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act;
   if (act === 'clear') clearSelection();
@@ -2070,11 +2111,13 @@ cardEl.addEventListener('click', (e) => {
   else if (act === 'cotas-clear') { saveUndo('Borrar todas las cotas'); clearCotas(); }
   else if (act === 'cota-del') deleteCota(+b.dataset.i);
   else if (act === 'note-add') startNoteAdd();
-  else if (act === 'note-edit') { const n = notes.find((x) => x.id === +b.dataset.note); if (n) { noteEdit = { mode: 'edit', id: n.id, draft: n.text, tipo: tipoDe(n), etapa: n.etapa || null }; renderCard(); } }
+  else if (act === 'note-edit') { const n = notes.find((x) => x.id === +b.dataset.note); if (n) { noteEdit = { mode: 'edit', id: n.id, draft: n.text, tipo: tipoDe(n), etapa: n.etapa || null, fotos: (n.fotos || []).slice() }; renderCard(); } }
+  else if (act === 'note-foto') { if (noteEdit) { const ta = $('#note-text'); if (ta) noteEdit.draft = ta.value; const ed = noteEdit; elegirFotos((l) => { if (noteEdit !== ed) return; (ed.fotos = ed.fotos || []).push(...l); renderCard(); }); } }   // Cerebrus
+  else if (act === 'note-dictar') { const ta = $('#note-text'); if (ta) dictar(ta, b); }   // Cerebrus
   else if (act === 'note-tipo') { if (noteEdit) { const ta = $('#note-text'); if (ta) noteEdit.draft = ta.value; noteEdit.tipo = b.dataset.tipo; if (noteEdit.tipo !== 'nota' && !noteEdit.etapa && almacen) noteEdit.etapa = almacen.etapaActual || null; renderCard(); } }
   else if (act === 'note-del') deleteNote(+b.dataset.note);
   else if (act === 'note-save') saveNoteEdit();
-  else if (act === 'note-cancel') { noteEdit = null; renderCard(); }
+  else if (act === 'note-cancel') { pararDictado(); noteEdit = null; renderCard(); }
   else if (act === 'move-off') setMoveMode(false);   // Cerebrus
   else if (act === 'rot') rotateSel(+b.dataset.g);   // Cerebrus
   else if (act === 'mueble') {
@@ -2867,6 +2910,7 @@ const ICON_NOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const pieceKey = (p) => p.uid || '#' + p.i;
 const notesKey = () => 'visor-taller:notas:' + (model.isSample ? 'ejemplo:' : model.shareStamp ? 'compartido:' + model.shareStamp + ':' : '') + model.fileName;
 function noteScopeLabel(n) {
+  if (!n.pieces.length && !(n.keysOrig || []).length) return n.scope || 'General de la obra';   // Cerebrus: anotación con foto, sin pieza
   if (!n.pieces.length) return (n.scope ? n.scope + ' · ' : '') + 'fuera de esta vista';   // Cerebrus: nota de otro plano u otro sector
   if (n.scope) return n.scope;
   return n.pieces.length === 1 ? model.pieces[n.pieces[0]].name : `${n.pieces.length} piezas`;
@@ -2914,13 +2958,14 @@ function notesFromSaved(list) {
   return (list || [])
     .map((s) => ({ id: ++noteUid, uuid: s.uuid || nuevoIdNota(), n: s.n, text: s.text, scope: s.scope || '', at: s.at || Date.now(), done: !!s.done, doneAt: s.doneAt || null,
       tipo: s.tipo || 'tarea', etapa: s.etapa || null, autor: s.autor || '', autorId: s.autorId || null, doneBy: s.doneBy || null,
+      fotos: Array.isArray(s.fotos) ? s.fotos : [],   // Cerebrus: fotos de la anotación
       pieces: (s.keys || []).map((k) => byKey.get(k)).filter((i) => i !== undefined),
       keysOrig: s.keys || [] }))   // Cerebrus: las claves originales (si la nota es de otro plano, no se pierden)
     // Cerebrus: con almacén, las notas de OTRO plano (ej. el básico, ya con el plano final) quedan en la lista sin pieza
-    .filter((n) => n.text && (n.pieces.length || almacen));
+    .filter((n) => n.text && (n.pieces.length || almacen || !n.keysOrig.length));   // Cerebrus: sin piezas = anotación general de la obra
 }
 const notaParaGuardar = (n) => ({ uuid: n.uuid, n: n.n, text: n.text, scope: n.scope, at: n.at, done: !!n.done, doneAt: n.doneAt || null,
-  tipo: tipoDe(n), etapa: n.etapa || null, keys: n.pieces.length ? n.pieces.map((i) => pieceKey(model.pieces[i])) : (n.keysOrig || []) });   // Cerebrus: sin pieza acá = conservar las suyas
+  tipo: tipoDe(n), etapa: n.etapa || null, fotos: n.fotos || [], keys: n.pieces.length ? n.pieces.map((i) => pieceKey(model.pieces[i])) : (n.keysOrig || []) });   // Cerebrus: sin pieza acá = conservar las suyas
 const notesForSave = () => notes.map(notaParaGuardar);
 function saveNotes() {
   if (almacen) return;   // en Cerebrus cada cambio ya se guardó en el almacén
@@ -3004,7 +3049,8 @@ function renderNotesTab() {
   el.innerHTML = [...notes].sort((a, b) => a.n - b.n).map((n) => `<div class="nrow${n.done ? ' done' : ''}">
       <label class="nrow-check" title="${n.done ? 'Resuelta: tocá para volver a pendiente' : 'Marcar como resuelta'}"><input type="checkbox" data-note-done="${n.id}"${n.done ? ' checked' : ''} aria-label="Resuelta"></label>
       <button type="button" class="nrow-go" data-note="${n.id}"><span class="note-n${tipoCls(n)}">${noteIcon(n)}${n.n}</span>
-        <span class="nrow-body"><b>${esc(noteScopeLabel(n))} <span class="note-etq">${etqNota(n)}</span></b><span>${esc(n.text)}</span></span></button></div>`).join('');
+        <span class="nrow-body"><b>${esc(noteScopeLabel(n))} <span class="note-etq">${etqNota(n)}</span></b><span>${esc(n.text)}</span></span></button>${(n.fotos || []).length ? `<div class="nrow-fotos">${fotosHTML(n.fotos)}</div>` : ''}</div>`).join('');
+  hidratarFotos(el);   // Cerebrus
 }
 $('#notes-list').addEventListener('change', (e) => {
   if (e.target.matches('input[data-note-done]')) setNoteDone(+e.target.dataset.noteDone, e.target.checked);
@@ -3012,6 +3058,7 @@ $('#notes-list').addEventListener('change', (e) => {
 $('#notes-list').addEventListener('click', (e) => {
   const b = e.target.closest('.nrow-go'); if (!b) return;
   const n = notes.find((x) => x.id === +b.dataset.note); if (!n) return;
+  if (!n.pieces.length && !(n.keysOrig || []).length) { if ((n.fotos || []).length) verFoto(n.fotos[0]); else toast('Es una anotación general de la obra (sin pieza).'); return; }   // Cerebrus
   if (!n.pieces.length) { toast('Esta anotación es de piezas que no están en esta vista (otro sector u otra versión del plano).'); return; }   // Cerebrus
   selectPieces(n.pieces); fitSelection(); lowerSheet();
 });
@@ -3026,12 +3073,13 @@ function notesBlockHTML(ids) {
   const tipos = () => `<div class="note-tipos">${TIPOS_NOTA.map(([k, t]) => `<button type="button" class="t-${k}${tipoEd === k ? ' on' : ''}" data-act="note-tipo" data-tipo="${k}">${t}</button>`).join('')}
     ${etapas.length && tipoEd !== 'nota' ? `<select id="note-etapa" aria-label="Etapa"><option value="">Sin etapa</option>${etapas.map((e) => `<option value="${e.id}"${noteEdit && noteEdit.etapa === e.id ? ' selected' : ''}>${esc(e.txt)}</option>`).join('')}</select>` : ''}</div>`;
   const editor = () => tipos() + `<textarea id="note-text" rows="3" maxlength="800" placeholder="Ej.: unir con Rafix · dejar 2 mm de luz · cambiar el tirador">${esc(noteEdit.draft || '')}</textarea>
+    <div class="note-media"><button type="button" class="btn small" data-act="note-foto">${ICON_CAM}Foto</button>${HAY_VOZ ? `<button type="button" class="btn small" data-act="note-dictar">${ICON_MIC}Dictar</button>` : ''}</div>${fotosHTML(noteEdit.fotos, true)}
     <div class="note-ed"><button type="button" class="btn small primary" data-act="note-save">Guardar</button><button type="button" class="btn small" data-act="note-cancel">Cancelar</button><span class="note-hint">Ctrl+Enter guarda</span></div>`;
   const items = list.map((n) => {
     const editing = noteEdit && noteEdit.mode === 'edit' && noteEdit.id === n.id;
     return `<li class="note${n.done ? ' done' : ' t-' + tipoDe(n)}">
       <div class="note-top"><span class="note-n${tipoCls(n)}">${noteIcon(n)}${n.n}</span><span class="note-scope">${esc(noteScopeLabel(n))}</span><span class="note-etq">${etqNota(n)}</span></div>
-      ${editing ? editor() : `<p class="note-text">${esc(n.text)}</p>
+      ${editing ? editor() : `<p class="note-text">${esc(n.text)}</p>${fotosHTML(n.fotos)}
       <div class="note-foot">
         <label class="note-check"><input type="checkbox" data-note-done="${n.id}"${n.done ? ' checked' : ''}> ${n.done ? 'Resuelto' : 'Marcar como resuelto'}${n.done && n.doneAt ? ` <span class="note-when">${esc(whenText(n.doneAt))}</span>` : ''}</label>
         ${puedeEditarNota(n) ? `<span class="note-acts"><button type="button" class="link" data-act="note-edit" data-note="${n.id}">Editar</button><button type="button" class="link" data-act="note-del" data-note="${n.id}">Borrar</button></span>` : ''}
@@ -3042,33 +3090,219 @@ function notesBlockHTML(ids) {
     ${adding ? `<div class="note new"><div class="note-top"><span class="note-scope">Anotación nueva sobre ${esc(ids.length === 1 ? model.pieces[ids[0]].name : scopeFor(ids))}</span></div>${editor()}</div>`
       : `<button type="button" class="btn small note-add" data-act="note-add">${ICON_NOTE}${list.length ? 'Agregar otra anotación' : 'Agregar anotación'}</button>`}</div>`;
 }
+/* ── Cerebrus (18/11): fotos y voz en las anotaciones ──────────────────────────────
+   Forma A: elegís la pieza, Anotar, escribís (o Dictar) y podés sumar fotos.
+   Forma B: botón "Foto" de la barra: foto (cámara o galería) + voz, sin escribir; con pieza elegida o general.
+   Con Cerebrus las fotos van al depósito "anotaciones" (supabase/026); en la versión suelta quedan
+   adentro de la nota (achicadas), como el resto de las notas del navegador. */
+const HAY_VOZ = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+const ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+const ICON_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+// la foto del celu pesa 3-5 MB: se achica (1600 px de lado con Cerebrus, 1000 en la versión suelta)
+function achicarFoto(file, lado, calidad) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob((b) => (b ? res(b) : rej(new Error('No se pudo leer la foto.'))), 'image/jpeg', calidad);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Ese archivo no es una foto que se pueda abrir.')); };
+    img.src = url;
+  });
+}
+const blobADataURL = (b) => new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
+// elegir fotos: el celu ofrece sacarla con la cámara o elegirla de la galería
+function elegirFotos(alElegir) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = async () => {
+    const lista = [...(inp.files || [])].slice(0, 6); if (!lista.length) return;
+    const out = [];
+    for (const fi of lista) {
+      try { const blob = await achicarFoto(fi, almacen ? 1600 : 1000, almacen ? 0.8 : 0.7); out.push({ blob, src: URL.createObjectURL(blob) }); }
+      catch (e) { toast(e.message, 'error'); }
+    }
+    if (out.length) alElegir(out);
+  };
+  inp.click();
+}
+// una foto ya guardada → dirección para verla (Cerebrus da un enlace por un rato)
+const fotoUrlCache = new Map();
+async function fotoUrl(ruta) {
+  if (!ruta) return '';
+  if (/^(data:|blob:|https?:)/.test(ruta)) return ruta;
+  if (fotoUrlCache.has(ruta)) return fotoUrlCache.get(ruta);
+  let u = '';
+  try { u = almacen && almacen.urlFoto ? await almacen.urlFoto(ruta) : ''; } catch (e) { u = ''; }
+  if (u) fotoUrlCache.set(ruta, u);
+  return u;
+}
+// miniaturas: cada foto es una ruta guardada (texto) o { src, blob } recién elegida
+function fotosHTML(fotos, quitar = false) {
+  if (!fotos || !fotos.length) return '';
+  return `<div class="note-fotos">${fotos.map((fo, i) => {
+    const ruta = typeof fo === 'string' ? fo : (fo.ruta || '');
+    const src = typeof fo === 'string' ? (/^(data:|blob:)/.test(fo) ? fo : '') : (fo.src || '');
+    return `<span class="note-foto" role="button" tabindex="0" data-foto-ver="${esc(src || ruta)}" aria-label="Ver la foto">${src ? `<img src="${esc(src)}" alt="">` : `<img data-foto="${esc(ruta)}" alt="">`}${quitar ? `<button type="button" class="qx" data-foto-quitar="${i}" aria-label="Quitar la foto">×</button>` : ''}</span>`;
+  }).join('')}</div>`;
+}
+function hidratarFotos(root) {
+  if (!root) return;
+  root.querySelectorAll('img[data-foto]:not([src])').forEach(async (img) => { const u = await fotoUrl(img.dataset.foto); if (u) img.src = u; });
+}
+async function verFoto(ruta) {
+  const u = await fotoUrl(ruta);
+  if (!u) { toast('No se pudo abrir la foto (¿sin internet?).', 'error'); return; }
+  document.getElementById('foto-grande')?.remove();
+  const ov = document.createElement('div'); ov.id = 'foto-grande'; ov.innerHTML = `<img src="${esc(u)}" alt="Foto de la anotación">`;
+  ov.addEventListener('click', () => ov.remove());
+  document.body.append(ov);
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest || e.target.closest('[data-foto-quitar]')) return;
+  const v = e.target.closest('[data-foto-ver]'); if (!v) return;
+  e.preventDefault(); e.stopPropagation(); verFoto(v.dataset.fotoVer);
+}, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('foto-grande')) { e.stopImmediatePropagation(); document.getElementById('foto-grande').remove(); } }, true);
+// dictado: lo que decís se va escribiendo en el cuadro (usa internet; la primera vez pide permiso al micrófono)
+let dictado = null;
+function pararDictado() {
+  if (!dictado) return;
+  const d = dictado; dictado = null;
+  try { d.rec.stop(); } catch (e) { /* nada */ }
+  d.btn.classList.remove('dictando');
+}
+function dictar(ta, btn) {
+  const mismo = dictado && dictado.btn === btn;
+  pararDictado();
+  if (mismo) return;   // segundo toque = terminar
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!R) { toast('Este navegador no escucha la voz: usá el micrófono del teclado del celu.', 'error'); return; }
+  const rec = new R(); rec.lang = 'es-AR'; rec.continuous = true; rec.interimResults = true;
+  const base = ta.value.trim() ? ta.value.replace(/\s*$/, ' ') : '';
+  let fijo = '';
+  rec.onresult = (ev) => {
+    let prov = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fijo += t; else prov += t; }
+    ta.value = base + fijo + prov;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  // Cerebrus: en el iPhone con la app instalada a veces no deja dictar desde la página → el micrófono del teclado siempre anda
+  rec.onerror = (ev) => { if (ev.error === 'not-allowed') toast('No hay permiso para el micrófono. Podés usar el micrófono del teclado (al lado de la barra espaciadora).', 'error'); else if (ev.error === 'service-not-allowed' || ev.error === 'audio-capture') toast('Este celu no deja dictar acá: usá el micrófono del teclado (al lado de la barra espaciadora).', 'error'); else if (ev.error === 'network') toast('Para dictar hace falta internet.', 'error'); };
+  rec.onend = () => { if (dictado && dictado.rec === rec) { dictado = null; btn.classList.remove('dictando'); } };
+  dictado = { rec, btn }; btn.classList.add('dictando');
+  try { rec.start(); } catch (e) { dictado = null; btn.classList.remove('dictando'); toast('No se pudo empezar a escuchar.', 'error'); }
+}
+// fotos nuevas → se suben (Cerebrus) o quedan adentro de la nota (versión suelta). Devuelve la lista final.
+async function fotosParaGuardar(uuid, lista) {
+  const out = [];
+  for (const fo of lista || []) {
+    if (typeof fo === 'string') { out.push(fo); continue; }
+    if (fo.ruta) { out.push(fo.ruta); continue; }
+    if (almacen && almacen.subirFoto) out.push(await almacen.subirFoto(uuid, fo.blob));
+    else out.push(await blobADataURL(fo.blob));
+  }
+  return out;
+}
+// anotación nueva (las dos formas terminan acá). ids vacío = general de la obra.
+async function crearNota({ ids, text, tipo, etapa, fotos }) {
+  const uuid = nuevoIdNota();
+  const rutas = fotos && fotos.length ? await fotosParaGuardar(uuid, fotos) : [];
+  saveUndo('Anotación nueva');
+  const nota = { id: ++noteUid, uuid, n: ++noteSeq, text, scope: ids.length ? scopeFor(ids) : 'General de la obra', at: Date.now(), pieces: ids.slice(), keysOrig: [], fotos: rutas,
+    tipo, etapa: tipo === 'nota' ? null : (etapa || null), autor: almacen ? almacen.usuario.nombre : '', autorId: almacen ? almacen.usuario.id : null };
+  notes.push(nota);
+  if (almacen) avisoAlmacen(almacen.guardar(notaParaGuardar(nota)));
+  notesChanged();
+  return nota;
+}
+// Forma B: la hoja "Anotar con foto y voz"
+function abrirNotaRapida() {
+  if (!model) return;
+  pararDictado();
+  const ids = measuring ? [] : [...sel].sort((a, b) => a - b);
+  const st = { fotos: [], tipo: 'tarea', etapa: almacen ? (almacen.etapaActual || null) : null, donde: ids.length ? 'sel' : 'general' };
+  const etapas = almacen && almacen.etapas ? almacen.etapas : [];
+  document.getElementById('nota-rapida')?.remove();
+  const ov = document.createElement('div'); ov.id = 'nota-rapida';
+  const pintar = () => {
+    pararDictado();
+    const ta0 = ov.querySelector('#nr-texto'); const txt = ta0 ? ta0.value : '';
+    ov.innerHTML = `<div class="nr-caja" role="dialog" aria-modal="true" aria-label="Anotar con foto y voz">
+      <h3>Anotar con foto y voz</h3>
+      <button type="button" class="nr-foto-btn" data-nr="foto">${ICON_CAM}${st.fotos.length ? 'Agregar otra foto' : 'Sacar o elegir una foto'}</button>
+      ${fotosHTML(st.fotos, true)}
+      <div class="nr-lbl">¿Dónde?</div>
+      <div class="nr-chips">${ids.length ? `<button type="button" data-nr-donde="sel" class="${st.donde === 'sel' ? 'on' : ''}">${esc(ids.length === 1 ? model.pieces[ids[0]].name : scopeFor(ids))}</button>` : ''}<button type="button" data-nr-donde="general" class="${st.donde === 'general' ? 'on' : ''}">General de la obra</button></div>
+      ${ids.length ? '' : '<div class="note-hint">Para atarla a una pieza, tocala en el 3D antes de apretar Foto.</div>'}
+      <div class="note-tipos">${TIPOS_NOTA.map(([k, t]) => `<button type="button" class="t-${k}${st.tipo === k ? ' on' : ''}" data-nr-tipo="${k}">${t}</button>`).join('')}
+        ${etapas.length && st.tipo !== 'nota' ? `<select id="nr-etapa" aria-label="Etapa"><option value="">Sin etapa</option>${etapas.map((e) => `<option value="${e.id}"${st.etapa === e.id ? ' selected' : ''}>${esc(e.txt)}</option>`).join('')}</select>` : ''}</div>
+      <div class="nr-voz">${HAY_VOZ ? `<button type="button" class="nr-mic" data-nr="mic" aria-label="Dictar con la voz (tocá para empezar y para terminar)">${ICON_MIC}</button>` : ''}
+        <textarea id="nr-texto" maxlength="800" aria-label="Qué pasa" placeholder="${HAY_VOZ ? 'Tocá el micrófono y hablá, o escribí acá' : 'Escribí qué pasa (o usá el micrófono del teclado)'}">${esc(txt)}</textarea></div>
+      <div class="nr-pie"><button type="button" class="btn" data-nr="cancelar">Cancelar</button><button type="button" class="btn primary" data-nr="guardar">Guardar</button></div>
+    </div>`;
+  };
+  const cerrar = () => { pararDictado(); st.fotos.forEach((fo) => fo.src && URL.revokeObjectURL(fo.src)); ov.remove(); document.removeEventListener('keydown', tecla, true); };
+  const tecla = (e) => { if (e.key === 'Escape' && !document.getElementById('foto-grande')) { e.stopImmediatePropagation(); cerrar(); } };
+  document.addEventListener('keydown', tecla, true);
+  ov.addEventListener('change', (e) => { if (e.target.id === 'nr-etapa') st.etapa = e.target.value || null; });
+  ov.addEventListener('click', async (e) => {
+    if (e.target === ov) return cerrar();
+    const q = e.target.closest('[data-foto-quitar]'); if (q) { st.fotos.splice(+q.dataset.fotoQuitar, 1); pintar(); return; }
+    const t = e.target.closest('[data-nr-tipo]'); if (t) { st.tipo = t.dataset.nrTipo; if (st.tipo !== 'nota' && !st.etapa && almacen) st.etapa = almacen.etapaActual || null; pintar(); return; }
+    const d = e.target.closest('[data-nr-donde]'); if (d) { st.donde = d.dataset.nrDonde; pintar(); return; }
+    const b = e.target.closest('[data-nr]'); if (!b) return;
+    if (b.dataset.nr === 'cancelar') return cerrar();
+    if (b.dataset.nr === 'foto') return elegirFotos((l) => { st.fotos.push(...l); pintar(); });
+    if (b.dataset.nr === 'mic') return dictar(ov.querySelector('#nr-texto'), b);
+    if (b.dataset.nr === 'guardar') {
+      pararDictado();
+      const text = ov.querySelector('#nr-texto').value.trim();
+      if (!text && !st.fotos.length) { toast('Sacá una foto o contá qué pasa.', 'error'); return; }
+      b.disabled = true; b.textContent = st.fotos.length ? 'Subiendo…' : 'Guardando…';
+      try {
+        await crearNota({ ids: st.donde === 'sel' ? ids : [], text: text || 'Foto', tipo: st.tipo, etapa: st.etapa, fotos: st.fotos });
+        cerrar(); renderCard(); toast('Anotación guardada');
+      } catch (err) { b.disabled = false; b.textContent = 'Guardar'; toast(err.message || String(err), 'error'); }
+    }
+  });
+  pintar();
+  document.body.append(ov);
+}
+document.getElementById('btn-foto-nota')?.addEventListener('click', abrirNotaRapida);
+
 function startNoteAdd() {
   if (!model || !sel.size || measuring) return;
-  noteEdit = { mode: 'add', ids: [...sel].sort((a, b) => a - b), draft: '', tipo: 'nota', etapa: almacen ? (almacen.etapaActual || null) : null };
+  noteEdit = { mode: 'add', ids: [...sel].sort((a, b) => a - b), draft: '', tipo: 'nota', etapa: almacen ? (almacen.etapaActual || null) : null, fotos: [] };
   if (isSheetLayout()) { if (sideEl.dataset.sheet === 'min') setSheet('mid'); sideEl.scrollTop = 0; }
   renderCard();
 }
-function saveNoteEdit() {
-  if (!noteEdit) return;
-  const text = (noteEdit.draft || '').trim();
-  if (!text) { noteEdit = null; renderCard(); return; }
-  if (noteEdit.mode === 'add') {
-    saveUndo('Anotación nueva');
-    const tipo = noteEdit.tipo || 'nota';
-    const nota = { id: ++noteUid, uuid: nuevoIdNota(), n: ++noteSeq, text, scope: scopeFor(noteEdit.ids), at: Date.now(), pieces: noteEdit.ids.slice(),
-      tipo, etapa: tipo === 'nota' ? null : (noteEdit.etapa || null), autor: almacen ? almacen.usuario.nombre : '', autorId: almacen ? almacen.usuario.id : null };
-    notes.push(nota);
-    if (almacen) avisoAlmacen(almacen.guardar(notaParaGuardar(nota)));
-  } else {
-    const n = notes.find((x) => x.id === noteEdit.id);
-    const tipo = noteEdit.tipo || tipoDe(n || {}), etapa = tipo === 'nota' ? null : (noteEdit.etapa || null);
-    if (n && (n.text !== text || tipoDe(n) !== tipo || (n.etapa || null) !== etapa)) {
-      saveUndo(`Editar la anotación ${n.n}`); n.text = text; n.tipo = tipo; n.etapa = etapa;
-      if (almacen) avisoAlmacen(almacen.guardar(notaParaGuardar(n)));
+async function saveNoteEdit() {
+  if (!noteEdit || noteEdit.guardando) return;
+  pararDictado();   // Cerebrus
+  const ta = $('#note-text'); if (ta) noteEdit.draft = ta.value;
+  const ed = noteEdit, fotosEd = ed.fotos || [];
+  let text = (ed.draft || '').trim();
+  if (!text && !fotosEd.length) { noteEdit = null; renderCard(); return; }
+  if (!text) text = 'Foto';
+  const hayNuevas = fotosEd.some((fo) => typeof fo !== 'string' && !fo.ruta);
+  if (hayNuevas) { ed.guardando = true; toast('Subiendo la foto…'); }
+  try {
+    if (ed.mode === 'add') {
+      await crearNota({ ids: ed.ids, text, tipo: ed.tipo || 'nota', etapa: ed.etapa, fotos: fotosEd });
+    } else {
+      const n = notes.find((x) => x.id === ed.id);
+      const tipo = ed.tipo || tipoDe(n || {}), etapa = tipo === 'nota' ? null : (ed.etapa || null);
+      const fotos = n ? await fotosParaGuardar(n.uuid, fotosEd) : [];
+      if (n && (n.text !== text || tipoDe(n) !== tipo || (n.etapa || null) !== etapa || JSON.stringify(n.fotos || []) !== JSON.stringify(fotos))) {
+        saveUndo(`Editar la anotación ${n.n}`); n.text = text; n.tipo = tipo; n.etapa = etapa; n.fotos = fotos;
+        if (almacen) avisoAlmacen(almacen.guardar(notaParaGuardar(n)));
+      }
+      notesChanged();
     }
-  }
-  noteEdit = null;
-  notesChanged();
+  } catch (err) { ed.guardando = false; toast(err.message || String(err), 'error'); return; }
+  if (noteEdit === ed) noteEdit = null;
   renderCard();
 }
 function deleteNote(id) {
@@ -4423,6 +4657,40 @@ renderCard();
 if('serviceWorker' in navigator && window.top === window && /^https?:$/.test(location.protocol)){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('Iris: sin modo app', e); }); });
 }
+/* Cerebrus: "Hay una versión nueva de Iris · Actualizar" (2026-11-18). Si la app quedó abierta de fondo, al volver
+   se pregunta a GitHub la fecha de la página publicada; si es más nueva que la abierta, se avisa arriba.
+   Solo la Iris suelta publicada (adentro de Cerebrus va con Cerebrus, que tiene su propio aviso). */
+(function(){
+  if(window.top !== window || !/\.github\.io$/.test(location.hostname)) return;
+  var abierta = Date.parse(document.lastModified); if(!isFinite(abierta)) return;
+  var mostrando = false, ultima = 0, LS = 'iris-act-pedida';
+  function revisar(){
+    if(mostrando || Date.now() - ultima < 60000) return;
+    ultima = Date.now();
+    fetch(location.pathname, { method:'HEAD', cache:'no-store' }).then(function(r){
+      var pub = Date.parse(r.headers.get('last-modified') || ''); if(!isFinite(pub) || pub <= abierta + 2000) return;
+      var p = null; try{ p = JSON.parse(localStorage.getItem(LS) || 'null'); }catch(e){}
+      if(p && p.lm === pub && Date.now() - p.at < 600000) return;   // recién recargamos por esta: GitHub tarda unos minutos
+      avisar(pub);
+    }).catch(function(){});
+  }
+  function avisar(pub){
+    mostrando = true;
+    var b = document.createElement('div'); b.setAttribute('role', 'status');
+    b.style.cssText = 'position:fixed;left:12px;right:12px;margin:0 auto;width:max-content;top:calc(10px + env(safe-area-inset-top));z-index:100000;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px);box-sizing:border-box;background:#2b3138;color:#fff;border-radius:12px;padding:9px 10px 9px 14px;font:500 14px/1.3 Barlow,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)';
+    b.innerHTML = '<span>🔄 Hay una versión nueva de Iris</span><button type="button" data-v="si" style="flex:none;border:0;border-radius:9px;background:#d8312b;color:#fff;font-weight:600;padding:8px 12px;cursor:pointer">Actualizar</button><button type="button" data-v="no" aria-label="Más tarde" style="flex:none;border:0;background:none;color:#c9ced4;font-size:18px;cursor:pointer;padding:4px">✕</button>';
+    b.addEventListener('click', function(e){
+      var v = e.target.closest('[data-v]'); if(!v) return;
+      if(v.getAttribute('data-v') === 'no'){ b.remove(); mostrando = false; ultima = Date.now() + 1800000; return; }
+      try{ localStorage.setItem(LS, JSON.stringify({ lm: pub, at: Date.now() })); }catch(e){}
+      location.reload();
+    });
+    document.body.appendChild(b);
+  }
+  setTimeout(revisar, 60000);
+  setInterval(revisar, 1800000);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') revisar(); });
+})();
 </script>
 </body><!--wrap-->
 </html><!--wrap-->

@@ -395,6 +395,15 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .om-body { display: flex; flex-direction: column; gap: 24px; padding: 18px; }
 .btn.big { min-height: 48px; padding: 0 18px; font-size: 16px; }
 .om-hint { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+/* Cerebrus (19/11): en la Iris suelta, abrir planos propios pide usuario de Cerebrus */
+#cb-puerta .modal-box { width: min(400px, 100%); padding: 18px 20px; gap: 10px; }
+#cb-puerta h2 { margin: 0; font-size: 18px; }
+#cb-puerta p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+#cb-puerta label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+#cb-puerta input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+#cb-puerta .err { color: #d8312b; font-size: 13px; min-height: 1em; }
+#cb-puerta .pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.om-quien { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 .om-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .om-sec-head h3 { margin: 0; font: 700 16px/1.2 var(--font-label); letter-spacing: .02em; }
 .om-sub { font-size: 12px; color: var(--muted); }
@@ -857,6 +866,7 @@ div.note-hint { text-align: right; margin-top: 4px; }
             Elegir un archivo…
           </button>
           <p class="om-hint" id="om-file-hint"></p>
+          <p class="om-quien" id="om-quien" hidden></p>
         </section>
         <section id="om-folder-sec" hidden>
           <div class="om-sec-head"><h3>Carpeta de trabajos</h3><button class="link" type="button" id="om-folder-pick">Elegir carpeta</button></div>
@@ -4158,6 +4168,7 @@ const extOf = (n) => (n.split('.').pop() || '').toUpperCase();
 const fileItem = (attrs, name, sub) => `<button type="button" class="fitem" ${attrs}><span class="fi-ico">${esc(extOf(name))}</span><span class="fi-name"><b>${esc(name)}</b><small>${esc(sub)}</small></span></button>`;
 
 function openOpenModal() {
+  if (irisSuelta && !sesionCB()) { pedirSesionCB().then((ok) => { if (ok) openOpenModal(); }); return; }   // Cerebrus: con usuario
   closeColorPop();
   closePrintDialog();
   if (printPick) endPrintPick();
@@ -4166,6 +4177,7 @@ function openOpenModal() {
     ? 'Del teléfono o de Google Drive: en la lista de lugares que aparece, tocá “Drive”.'
     : 'De la computadora, de un pendrive o de la carpeta de Google Drive de esta PC.';
   $('#om-folder-sec').hidden = !canPickFolder;
+  { const s = irisSuelta && sesionCB(), q = $('#om-quien'); q.hidden = !s; if (s) { q.innerHTML = 'Conectado con Cerebrus como <b>' + esc(s.email) + '</b> · <button type="button" class="link" id="om-salir">Salir</button>'; $('#om-salir').onclick = () => { salirCB(); closeOpenModal(); toast('Saliste de Cerebrus en este equipo'); }; } }   // Cerebrus
   openModal.hidden = false;
   $('#om-file').focus();
   renderRecent();
@@ -4261,6 +4273,7 @@ async function openFromFolder(x) {
 }
 async function openRecent(id) {
   closeOpenModal();
+  if (!(await pedirSesionCB())) return;   // Cerebrus
   const bufs = await store.get('rec:' + id);
   if (!bufs) { await removeRecent(id); toast('Ese modelo ya no está guardado en este equipo. Abrilo de nuevo desde el archivo.', 'error'); return; }
   if (await openBuffers(bufs)) {
@@ -4604,7 +4617,51 @@ const store = {
   },
 };
 
+/* Cerebrus (19/11, pedido de Coco): la Iris SUELTA (la del enlace, sin Cerebrus) abre sin usuario solo los planos que se
+   comparten por enlace. Para abrir planos propios (archivo, arrastrar, recientes) hay que entrar con el usuario de
+   Cerebrus. Adentro de Cerebrus no se pide nada. Queda recordado 30 días en este equipo.
+   (Es una puerta de la pantalla: frena a cualquiera que la use, no es una caja fuerte.) */
+const CB_SESION = 'iris-cb-sesion';
+const irisSuelta = window.top === window;
+function sesionCB() {
+  try { const s = JSON.parse(localStorage.getItem(CB_SESION) || 'null'); if (s && s.email && Date.now() - s.desde < 30 * 864e5) return s; } catch (e) { /* nada */ }
+  return null;
+}
+function salirCB() { try { localStorage.removeItem(CB_SESION); } catch (e) { /* nada */ } }
+function pedirSesionCB() {
+  if (!irisSuelta || sesionCB()) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    document.getElementById('cb-puerta')?.remove();
+    const ov = document.createElement('div'); ov.className = 'modal'; ov.id = 'cb-puerta';
+    ov.innerHTML = `<form class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cbp-h" style="display:flex;flex-direction:column">
+      <h2 id="cbp-h">Entrá con tu usuario de Cerebrus</h2>
+      <p>Para abrir planos propios en Iris hace falta un usuario de Cerebrus. Los planos que te comparten por enlace se ven sin usuario.</p>
+      <label for="cbp-mail">Mail</label><input id="cbp-mail" type="email" autocomplete="username" required>
+      <label for="cbp-clave">Contraseña</label><input id="cbp-clave" type="password" autocomplete="current-password" required>
+      <div class="err" id="cbp-err" role="alert"></div>
+      <div class="pie"><button type="button" class="btn" data-cbp="no">Cancelar</button><button type="submit" class="btn primary">Entrar</button></div>
+    </form>`;
+    document.body.appendChild(ov);
+    const fin = (ok) => { ov.remove(); resolve(ok); };
+    ov.querySelector('[data-cbp="no"]').addEventListener('click', () => fin(false));
+    ov.addEventListener('keydown', (e) => { if (e.key === 'Escape') fin(false); });
+    ov.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const mail = ov.querySelector('#cbp-mail').value.trim(), clave = ov.querySelector('#cbp-clave').value;
+      const err = ov.querySelector('#cbp-err'), btn = ov.querySelector('[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Entrando…'; err.textContent = '';
+      try {
+        const r = await fetch(CB_SUPA + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: CB_CLAVE, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: mail, password: clave }) });
+        if (!r.ok) { err.textContent = r.status === 400 ? 'Mail o contraseña incorrectos.' : 'No se pudo entrar (' + r.status + '). Probá de nuevo.'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+        localStorage.setItem(CB_SESION, JSON.stringify({ email: mail, desde: Date.now() }));
+        fin(true);
+      } catch (ex) { err.textContent = 'Sin conexión: para entrar hace falta internet.'; btn.disabled = false; btn.textContent = 'Entrar'; }
+    });
+    setTimeout(() => ov.querySelector('#cbp-mail').focus(), 30);
+  });
+}
 async function openFiles(list) {
+  if (!(await pedirSesionCB())) return;   // Cerebrus: planos propios solo con usuario
   const files = [...list].filter((f) => /\.(3dm|obj|mtl|html?)$/i.test(f.name));
   if (!files.some((f) => /\.(3dm|obj|html?)$/i.test(f.name))) {
     toast('Ese tipo de archivo no lo puedo abrir. Usá un .3dm (el archivo de Rhino), un .obj o un plano compartido (.html).', 'error');
@@ -4743,7 +4800,7 @@ renderCard();
     if (bufs && (await openBuffers(bufs, yaHayOtro))) return;
   }
   if (yaHayOtro()) return;   // Cerebrus
-  const last = await store.get('ultimo');   // guardado por la versión anterior del visor
+  const last = (irisSuelta && !sesionCB()) ? null : await store.get('ultimo');   // guardado por la versión anterior del visor (Cerebrus: sin usuario, no)
   if (last?.files?.length && (await openBuffers(last.files, yaHayOtro))) { await addRecent(last.files); store.del('ultimo'); return; }
   if (yaHayOtro()) return;   // Cerebrus
   const s = sampleModel();

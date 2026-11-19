@@ -439,6 +439,11 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .note textarea:focus { outline: none; border-color: var(--note); box-shadow: 0 0 0 3px color-mix(in srgb, var(--note) 25%, transparent); }
 .note-ed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .note-hint { font-size: 12px; color: var(--muted); }
+/* Cerebrus (19/11): Foto · Dictar · Guardar · Cancelar en una sola fila y el atajo abajo a la derecha */
+.note-acc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.note-acc .note-media, .note-acc .note-ed { margin-top: 0; flex-wrap: nowrap; }
+.note-acc .note-ed { margin-left: auto; }
+div.note-hint { text-align: right; margin-top: 4px; }
 .note-add { justify-self: start; background: var(--note-soft); color: var(--note-ink); border-color: color-mix(in srgb, var(--note) 45%, transparent); }
 .note-add svg { width: 16px; height: 16px; }
 .row.noted .rn b::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: var(--note); vertical-align: middle; }
@@ -467,6 +472,11 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .note-tipos button.on.t-tarea { background: #e8590c; border-color: #e8590c; color: #fff; }
 .note-tipos button.on.t-problema { background: #d8312b; border-color: #d8312b; color: #fff; }
 .note-tipos select { margin-left: auto; font: 13px inherit; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.note-tipos { flex-wrap: nowrap; }   /* Cerebrus (19/11): la etapa entra en la misma fila que Nota · Tarea · Problema */
+.note-tipos button { flex: none; }
+.note-tipos select { min-width: 70px; width: 0; flex: 1 1 0; max-width: 160px; text-overflow: ellipsis; }
+.notes > .note { min-width: 0; }   /* que la anotación no se haga más ancha que la pantalla */
+@media (max-width: 420px) { .note-tipos button { padding: 4px 9px; } .note-acc .btn.small { padding-left: 9px; padding-right: 9px; } .note-acc { gap: 5px; } .note-acc .note-media, .note-acc .note-ed { gap: 5px; } }
 .note-firma { margin-top: 4px; font-size: 11px; color: var(--muted); }
 /* Cerebrus (18/11): fotos y dictado en las anotaciones */
 .note-media { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
@@ -714,7 +724,7 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 
       <div class="views">
         <!-- las vistas van plegadas (PC y celular): se ve solo la activa y al tocarla se despliega la lista -->
-        <button class="tool view-dd" type="button" id="view-dd" aria-haspopup="true" aria-expanded="false" aria-label="Elegir vista"><span id="view-dd-lbl">Perspectiva</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="tool view-dd" type="button" id="view-dd" aria-haspopup="true" aria-expanded="false" aria-label="Elegir vista"><span id="view-dd-lbl">Persp.</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="seg views-seg" role="toolbar" aria-label="Vistas">
           <button type="button" data-view="persp" aria-pressed="true">Perspectiva</button>
           <button type="button" data-view="top" aria-pressed="false">Planta</button>
@@ -1746,7 +1756,7 @@ function setView(k) {
   controls.touches.ONE = oneFingerMode();
   document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === k)));
   // selector plegado del celular: muestra la vista activa y se cierra
-  $('#view-dd-lbl').textContent = $(`[data-view="${k}"]`).textContent;
+  $('#view-dd-lbl').textContent = k === 'persp' ? 'Persp.' : $(`[data-view="${k}"]`).textContent;   // Cerebrus: ocupa menos lugar (Coco, 19/11)
   closeViewMenu();
   const s = sphereOf(visiblePieces());
   if (s) sceneR = s.radius;
@@ -3111,8 +3121,8 @@ function notesBlockHTML(ids) {
   const tipos = () => `<div class="note-tipos">${TIPOS_NOTA.map(([k, t]) => `<button type="button" class="t-${k}${tipoEd === k ? ' on' : ''}" data-act="note-tipo" data-tipo="${k}">${t}</button>`).join('')}
     ${etapas.length && tipoEd !== 'nota' ? `<select id="note-etapa" aria-label="Etapa"><option value="">Sin etapa</option>${etapas.map((e) => `<option value="${e.id}"${noteEdit && noteEdit.etapa === e.id ? ' selected' : ''}>${esc(e.txt)}</option>`).join('')}</select>` : ''}</div>`;
   const editor = () => tipos() + `<textarea id="note-text" rows="3" maxlength="800" placeholder="Ej.: unir con Rafix · dejar 2 mm de luz · cambiar el tirador">${esc(noteEdit.draft || '')}</textarea>
-    <div class="note-media"><button type="button" class="btn small" data-act="note-foto">${ICON_CAM}Foto</button>${HAY_VOZ ? `<button type="button" class="btn small" data-act="note-dictar">${ICON_MIC}Dictar</button>` : ''}</div>${fotosHTML(noteEdit.fotos, true)}
-    <div class="note-ed"><button type="button" class="btn small primary" data-act="note-save">Guardar</button><button type="button" class="btn small" data-act="note-cancel">Cancelar</button><span class="note-hint">Ctrl+Enter guarda</span></div>`;
+    <div class="note-acc"><div class="note-media"><button type="button" class="btn small" data-act="note-foto">${ICON_CAM}Foto</button>${HAY_VOZ ? `<button type="button" class="btn small" data-act="note-dictar">${ICON_MIC}Dictar</button>` : ''}</div>
+    <div class="note-ed"><button type="button" class="btn small primary" data-act="note-save">Guardar</button><button type="button" class="btn small" data-act="note-cancel">Cancelar</button></div></div><div class="note-hint">Ctrl+Enter guarda</div>${fotosHTML(noteEdit.fotos, true)}`;   // Cerebrus: Foto · Dictar · Guardar · Cancelar en una fila (Coco, 19/11)
   const items = list.map((n) => {
     const editing = noteEdit && noteEdit.mode === 'edit' && noteEdit.id === n.id;
     return `<li class="note${n.done ? ' done' : ' t-' + tipoDe(n)}">

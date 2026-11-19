@@ -618,6 +618,33 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .sub-eyebrow { display: block; margin-top: 14px; font: 600 12px/1 var(--font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .stage.moving canvas { cursor: move; }
 @media (max-width: 860px) { .ens-tools .tl-mv { display: none; } }
+/* Cerebrus (19/11, Cerebrus refinado paso 6): adentro de Cerebrus y en la compu, una BARRA CORTA ABAJO en el centro:
+   Vista ▾ · Sombreado ▾ · Ver todo · Puertas/Fondos/Alacenas · Medir · ↶↷ · ⋯ · + Anotar.
+   Lo de la pieza elegida flota arriba de la barra; Mover módulos queda arriba a la izquierda; Buscar/Foto/Imprimir van al ⋯. */
+.cb-abajo .views { top: auto; bottom: 18px; left: 12px; right: 12px; width: fit-content; margin: 0 auto; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 7px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 28px rgb(0 0 0 / .28); pointer-events: auto; }
+.cb-abajo .views .spacer, .cb-abajo .views .row-break, .cb-abajo #btn-fit .tl { display: none; }
+.cb-abajo .views > .tool, .cb-abajo .views > .seg { box-shadow: none; }
+.cb-abajo .views-seg.open, .cb-abajo .look-seg.open { top: auto; bottom: calc(100% + 8px); }
+.cb-abajo .view-dd { order: 1; } .cb-abajo .look-dd { order: 2; } .cb-abajo #btn-fit { order: 3; } .cb-abajo .filt-seg { order: 4; }
+.cb-abajo #btn-measure { order: 5; } .cb-abajo .undo-seg { order: 6; } .cb-abajo .cb-mas { order: 7; } .cb-abajo .cb-anotar { order: 8; }
+.cb-abajo .views .sel-tools { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); flex-wrap: nowrap; white-space: nowrap; box-shadow: 0 10px 28px rgb(0 0 0 / .28); }
+.cb-abajo .views .sel-tools:not(.on) { display: none; }
+.cb-mas { position: relative; display: inline-flex; }
+.cb-mas > .tool { font-size: 18px; letter-spacing: 1px; padding: 0 12px; }
+.cb-mas[data-abierto] > .tool { border-color: var(--accent); }
+.cb-mas-pop { position: absolute; bottom: calc(100% + 10px); right: 0; z-index: 30; flex-direction: column; flex-wrap: nowrap; gap: 2px; padding: 6px; min-width: 190px; box-shadow: 0 10px 28px rgb(0 0 0 / .28); }
+.cb-mas-pop .tool { width: 100%; justify-content: flex-start; border-color: transparent; box-shadow: none; white-space: nowrap; }
+.cb-mas-pop .tool:hover { background: var(--paper); }
+.cb-mas-pop #btn-foto-nota .tl { display: none; }
+.cb-mas-pop #btn-foto-nota::after { content: 'Anotar con foto y voz'; }
+.cb-mas-pop #btn-search .tl { display: none; }
+.cb-mas-pop #btn-search::after { content: 'Buscar una pieza'; }
+.cb-anotar { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); padding: 0 16px; }
+.cb-anotar:hover { border-color: var(--accent); filter: brightness(1.06); }
+.cb-anotar:disabled { opacity: .45; cursor: default; filter: none; }
+.cb-arriba { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 6; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.cb-arriba > * { pointer-events: auto; }
+@media print { .cb-arriba { display: none !important; } }
 /* Cerebrus: pantalla de entrada de la app (logo de Iris + "Powered by Cerebrus") */
 #cb-entrada{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
   background:var(--paper,#f3f5f4);color:var(--ink,#1a2126);transition:opacity .45s ease;font-family:'Barlow Semi Condensed','Barlow',system-ui,sans-serif}
@@ -1129,6 +1156,9 @@ function measureInsets() {
   const st = stageEl.getBoundingClientRect();
   if (!st.height) return;
   const vb = $('.views').getBoundingClientRect();
+  if (document.documentElement.classList.contains('cb-abajo')) {   // Cerebrus: barra abajo → el modelo se centra arriba de ella
+    insetTop = 0; insetBot = Math.max(0, Math.min(H * 0.3, st.bottom - vb.top + 6)); return;
+  }
   insetTop = Math.max(0, Math.min(H * 0.45, vb.bottom - st.top + 6));
   const side = $('.side');
   insetBot = side && getComputedStyle(side).position === 'absolute' ? Math.min(H * 0.3, 80) : 0;
@@ -1994,6 +2024,7 @@ function updateSelTools() {
   selToolsEl.classList.toggle('on', on);
   selToolsEl.querySelectorAll('button').forEach((b) => { b.disabled = !on; });
   const bFoto = document.getElementById('btn-foto-nota'); if (bFoto) bFoto.disabled = !model;   // Cerebrus
+  const bAn = document.getElementById('cb-anotar'); if (bAn) bAn.disabled = !model;   // Cerebrus: barra abajo
   document.querySelectorAll('[data-rot]').forEach((b) => { b.disabled = !(on && puedeMover()); });   // Cerebrus
 }
 function renderCard() { renderCard0(); hidratarFotos(cardEl); }   // Cerebrus: las fotos se cargan después
@@ -2227,8 +2258,15 @@ function syncSearchPop() {
 function openSearch() {
   closeMenus(); closeHelp();
   searchPop.hidden = false;
-  const b = searchBtn.getBoundingClientRect(), w = searchPop.offsetWidth;
-  searchPop.style.top = (b.bottom + 8) + 'px';
+  const ref = searchBtn.offsetParent ? searchBtn : (document.getElementById('cb-mas-btn') || searchBtn);   // Cerebrus: dentro del ⋯ cerrado
+  const b = ref.getBoundingClientRect(), w = searchPop.offsetWidth;
+  let top = b.bottom + 8;
+  if (top + searchPop.offsetHeight > window.innerHeight - 8) top = Math.max(8, b.top - searchPop.offsetHeight - 8);   // Cerebrus: barra abajo
+  if (document.documentElement.classList.contains('cb-abajo')) {   // Cerebrus: con la barra abajo, la búsqueda sale arriba de la barra (y de lo de la pieza elegida)
+    const tapa = [$('.views'), selToolsEl.classList.contains('on') ? selToolsEl : null].filter(Boolean).map((e) => e.getBoundingClientRect().top);
+    top = Math.max(8, Math.min(...tapa) - searchPop.offsetHeight - 10);
+  }
+  searchPop.style.top = top + 'px';
   searchPop.style.left = Math.max(12, Math.min(window.innerWidth - w - 12, b.left)) + 'px';
   searchBtn.setAttribute('aria-expanded', 'true');
   syncSearchPop();
@@ -3531,6 +3569,57 @@ window.matchMedia('(max-width: 860px), (orientation: landscape) and (max-height:
   updateLookUI();
 });
 placeTools();
+
+// Cerebrus (19/11, Cerebrus refinado paso 6): adentro de Cerebrus y en la compu, las herramientas van en una BARRA CORTA ABAJO.
+// Los botones de siempre se MUDAN (no se copian): siguen haciendo lo mismo, con sus teclas. Cada uno deja una marca para volver.
+const cbAbajoQ = window.matchMedia('(min-width: 861px) and (min-height: 521px)');
+const cbViews = $('.views');
+const cbMas = document.createElement('div'); cbMas.id = 'cb-mas'; cbMas.className = 'cb-mas';
+cbMas.innerHTML = '<button class="tool" type="button" id="cb-mas-btn" aria-haspopup="true" aria-expanded="false" title="Más: buscar una pieza, anotar con foto y voz, imprimir">⋯</button><div class="seg cb-mas-pop" id="cb-mas-pop" role="menu" hidden></div>';
+const cbMasBtn = cbMas.querySelector('#cb-mas-btn'), cbMasPop = cbMas.querySelector('#cb-mas-pop');
+const cbAnotar = document.createElement('button');
+cbAnotar.type = 'button'; cbAnotar.id = 'cb-anotar'; cbAnotar.className = 'tool cb-anotar'; cbAnotar.disabled = true;
+cbAnotar.title = 'Anotar: con una pieza elegida, sobre esa pieza; sin nada elegido, con foto y voz (o general de la obra)';
+cbAnotar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z"/></svg>+ Anotar';
+const cbArriba = document.createElement('div'); cbArriba.id = 'cb-arriba'; cbArriba.className = 'cb-arriba';
+const cbAlMas = ['#btn-search', '#btn-foto-nota', '#btn-print'].map((s) => $(s)).filter(Boolean);
+const cbAlArriba = ['#ens-tools', '#btn-rotate', '#btn-showall'].map((s) => $(s)).filter(Boolean);
+const cbMovidos = [...cbAlMas, ...cbAlArriba].map((el) => { const home = document.createComment(' lugar de ' + el.id + ' '); el.before(home); return { el, home }; });
+function cbCerrarMas() { cbMasPop.hidden = true; cbMasBtn.setAttribute('aria-expanded', 'false'); delete cbMas.dataset.abierto; }
+function cbBarraAbajo() {
+  const on = window.top !== window && cbAbajoQ.matches;
+  if (on === document.documentElement.classList.contains('cb-abajo') && (on === cbMas.isConnected)) return false;   // ya está así
+  document.documentElement.classList.toggle('cb-abajo', on);
+  cbCerrarMas(); closeMenus();
+  if (on) {
+    cbAlMas.forEach((el) => cbMasPop.append(el));
+    cbAlArriba.forEach((el) => cbArriba.append(el));
+    if (!cbMas.isConnected) { cbViews.append(cbMas, cbAnotar); stageEl.append(cbArriba); }
+    cbAnotar.disabled = !model;
+  } else {
+    cbMovidos.forEach(({ el, home }) => home.after(el));
+    cbMas.remove(); cbAnotar.remove(); cbArriba.remove();
+  }
+  return true;
+}
+cbMasBtn.addEventListener('click', () => {
+  const abrir = cbMasPop.hidden;
+  closeMenus(); cbCerrarMas();
+  if (abrir) { cbMasPop.hidden = false; cbMasBtn.setAttribute('aria-expanded', 'true'); cbMas.dataset.abierto = '1'; }
+});
+cbMasPop.addEventListener('click', (e) => { if (e.target.closest('button')) setTimeout(cbCerrarMas); });   // primero hace lo suyo
+document.addEventListener('pointerdown', (e) => { if (!cbMasPop.hidden && !e.target.closest('#cb-mas')) cbCerrarMas(); }, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !cbMasPop.hidden) cbCerrarMas(); });
+// "+ Anotar": con una pieza elegida → anotar sobre esa pieza (Forma A); sin nada elegido → foto y voz (Forma B, o general de la obra)
+cbAnotar.addEventListener('click', () => {
+  cbCerrarMas(); closeMenus();
+  if (!model) return;
+  if (sel.size) startNoteAdd(); else abrirNotaRapida();
+});
+cbBarraAbajo();
+// Cerebrus arma Iris escondido (sin ancho): al mostrarse o cambiar de tamaño se vuelve a mirar
+cbAbajoQ.addEventListener?.('change', () => { if (cbBarraAbajo()) resize(); });
+window.addEventListener('resize', () => { if (cbBarraAbajo()) resize(); });
 
 /* ---------------------------------------------------------------------
    Imprimir: se marca una ventana sobre el dibujo (como en Rhino) y se

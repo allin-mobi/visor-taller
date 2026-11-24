@@ -1978,6 +1978,7 @@ function helpHTML() {
     ['Mover la vista', '<kbd>Shift</kbd>+<kbd>Click der.</kbd>'],
     ['Mover en vistas planas', '<kbd>Click der.</kbd> arrastrando'],
     ['Acercar y alejar', '<kbd>Rueda</kbd>'],
+    ['Acercar y alejar sin rueda', '<kbd>Ctrl</kbd>+<kbd>Click der.</kbd> arrastrando ↑ ↓'],   // Cerebrus
     ['Acercarse a una pieza', '<kbd>Doble click</kbd>'],
     ['Medir distancias', '<kbd>M</kbd> o botón Medir'],
   ];
@@ -2612,6 +2613,29 @@ canvas.addEventListener('pointerdown', (e) => {
     button: 2, buttons: e.buttons, pointerId: e.pointerId, pointerType: e.pointerType, isPrimary: e.isPrimary,
   }));
 }, true);
+// Cerebrus: Ctrl + click derecho arrastrando = acercar/alejar (para mouses con la rueda que falla; Coco, 24/11).
+// Mover el mouse hacia arriba acerca, hacia abajo aleja, hacia donde se apretó. Solo por ese arrastre:
+// después el click derecho vuelve a girar / mover como siempre.
+// Cada píxel que se mueve el mouse es un pedacito de "vuelta de rueda" en el punto donde se apretó
+// (el arrastre-zoom propio del control apunta mal en esta versión de three.js, la rueda apunta bien).
+let ctrlZoom = null;
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.button !== 2 || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.pointerType !== 'mouse') return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  tipEl.hidden = true;
+  ctrlZoom = { x: e.clientX, y: e.clientY, ultY: e.clientY, pid: e.pointerId };
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* nada */ }
+}, true);
+canvas.addEventListener('pointermove', (e) => {
+  if (!ctrlZoom || e.pointerId !== ctrlZoom.pid) return;
+  const dy = e.clientY - ctrlZoom.ultY;
+  if (!dy) return;
+  ctrlZoom.ultY = e.clientY;
+  canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: dy * 4, deltaMode: 0, clientX: ctrlZoom.x, clientY: ctrlZoom.y, bubbles: true, cancelable: true }));
+});
+const finCtrlZoom = (e) => { if (ctrlZoom && e.pointerId === ctrlZoom.pid) ctrlZoom = null; };
+canvas.addEventListener('pointerup', finCtrlZoom);
+canvas.addEventListener('pointercancel', finCtrlZoom);
 canvas.addEventListener('pointerup', (e) => {
   dropTouch(e);
   if (down && e.pointerId !== down.id) return;

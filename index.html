@@ -2785,12 +2785,15 @@ function piecesInBox(R, crossing) {
    Medir (cotas)
    Imanes como el Osnap de Rhino: esquina > mitad > arista > cara
    --------------------------------------------------------------------- */
-const SNAP_LABEL = { vertex: 'Esquina', mid: 'Mitad', edge: 'Arista', face: 'Cara' };
+const SNAP_LABEL = { vertex: 'Esquina', mid: 'Mitad', edge: 'Arista', face: 'Cara', eje: 'Eje espesor', ejemid: 'Centro canto' };   // Cerebrus: ejes
 const SNAP_SVG = {
   vertex: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11"/></svg>',
   mid: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5 13.8 13H2.2Z"/></svg>',
   edge: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/></svg>',
   face: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.5" fill="currentColor"/></svg>',
+  // Cerebrus: eje = línea de trazo y punto (como en los planos); centro del canto = cruz en un círculo
+  eje: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M1.5 8h4M7.5 8h1M10.5 8h4"/></svg>',
+  ejemid: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 1v14M1 8h14"/></svg>',
 };
 const RING = [[0, 0], [12, 0], [-12, 0], [0, 12], [0, -12], [9, 9], [-9, 9], [9, -9], [-9, -9]];
 const labelsEl = $('#labels'), snapEl = $('#snap');
@@ -2830,6 +2833,43 @@ function isVisible(p) {
   return !h || h.distance >= dist - Math.max(dist * 1e-4, 0.3 / model.toMM);
 }
 
+// Cerebrus: ejes del espesor de una placa (se calculan una vez por pieza, en sus coordenadas).
+// El espesor = el grupo más grande de aristas cortas (≤ 40 mm) paralelas y de igual largo, si la pieza mide
+// justo eso en esa dirección (es una placa plana). Las aristas de una de sus caras grandes, corridas medio
+// espesor hacia adentro, son las líneas por la mitad de los cantos (sirve también con muescas o cortes).
+function ejesDe(p) {
+  if (p.ejePos) return p.ejePos;
+  p.ejePos = new Float32Array(0);
+  const ep = p.edgePos, k = model.toMM || 1, maxT = 40 / k, tol = 0.3 / k;
+  if (!ep || ep.length > 6 * 400) return p.ejePos;   // piezas curvas o muy cargadas: sin ejes
+  const grupos = [];
+  for (let i = 0; i + 5 < ep.length; i += 6) {
+    let dx = ep[i + 3] - ep[i], dy = ep[i + 4] - ep[i + 1], dz = ep[i + 5] - ep[i + 2];
+    const L = Math.hypot(dx, dy, dz);
+    if (L < tol || L > maxT) continue;
+    dx /= L; dy /= L; dz /= L;
+    if (dx < -1e-6 || (Math.abs(dx) < 1e-6 && (dy < -1e-6 || (Math.abs(dy) < 1e-6 && dz < 0)))) { dx = -dx; dy = -dy; dz = -dz; }
+    const g = grupos.find((q) => Math.abs(q.L - L) < tol && q.x * dx + q.y * dy + q.z * dz > 0.999);
+    if (g) g.n++; else grupos.push({ L, x: dx, y: dy, z: dz, n: 1 });
+  }
+  grupos.sort((a, b) => b.n - a.n || a.L - b.L);
+  for (const g of grupos) {
+    if (g.n < 4) break;
+    const s = (j) => ep[j] * g.x + ep[j + 1] * g.y + ep[j + 2] * g.z;
+    let lo = Infinity, hi = -Infinity;
+    for (let j = 0; j < ep.length; j += 3) { const v = s(j); if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (Math.abs(hi - lo - g.L) > tol) continue;   // no es una placa plana en esa dirección
+    const h = g.L / 2, out = [];
+    for (let i = 0; i + 5 < ep.length; i += 6) {
+      if (Math.abs(s(i) - lo) > tol || Math.abs(s(i + 3) - lo) > tol) continue;   // solo las aristas de la cara de abajo
+      out.push(ep[i] + g.x * h, ep[i + 1] + g.y * h, ep[i + 2] + g.z * h, ep[i + 3] + g.x * h, ep[i + 4] + g.y * h, ep[i + 5] + g.z * h);
+    }
+    p.ejePos = new Float32Array(out);
+    break;
+  }
+  return p.ejePos;
+}
+
 function snapAt(x, y) {
   if (!model) return null;
   cam.updateMatrixWorld();
@@ -2866,6 +2906,15 @@ function snapAt(x, y) {
       consider('mid', 1, _mid.addVectors(_a, _b).multiplyScalar(0.5), 10);
       ray.ray.distanceSqToSegment(_a, _b, undefined, _c);
       consider('edge', 2, _c, 8);
+    }
+    // Cerebrus: eje del espesor (línea por la mitad de cada canto) para marcar minifix / rafix (Coco, 24/11)
+    const ej = ejesDe(mesh.userData.piece);
+    for (let i = 0; i + 5 < ej.length; i += 6) {
+      _a.set(ej[i], ej[i + 1], ej[i + 2]).applyMatrix4(mw);
+      _b.set(ej[i + 3], ej[i + 4], ej[i + 5]).applyMatrix4(mw);
+      consider('ejemid', 1, _mid.addVectors(_a, _b).multiplyScalar(0.5), 10);
+      ray.ray.distanceSqToSegment(_a, _b, undefined, _c);
+      consider('eje', 2, _c, 8);
     }
   }
   // gana el imán más fuerte; entre iguales, el más cerca del mouse; si están encimados, el de adelante
@@ -3504,7 +3553,7 @@ function measureCardHTML() {
     : '<p class="mempty">Todavía no hay cotas.</p>';
   return `<div class="card-head"><span class="eyebrow">Medir</span><button class="x" type="button" data-act="measure-off" aria-label="Dejar de medir">×</button></div>
     <p class="mstep">${step}</p>
-    <ul class="snaps" aria-label="Dónde se pega el punto">${['vertex', 'mid', 'edge', 'face'].map((k) => `<li>${SNAP_SVG[k]}${SNAP_LABEL[k]}</li>`).join('')}</ul>
+    <ul class="snaps" aria-label="Dónde se pega el punto">${['vertex', 'mid', 'edge', 'face', 'eje', 'ejemid'].map((k) => `<li>${SNAP_SVG[k]}${SNAP_LABEL[k]}</li>`).join('')}</ul>
     <p class="mhint">Con <kbd>Shift</kbd> apretado la cota va recta en X, Y o Z: sirve para luces interiores y alturas. Si hay esquinas muy juntas, acercate con la rueda antes de marcar.</p>
     ${list}
     ${cotas.length ? `<p class="mhint">Para marcar la unión, hacé click en el número de la cota y escribí una letra: <b>R</b> Rafix, <b>M</b> Minifix.</p>

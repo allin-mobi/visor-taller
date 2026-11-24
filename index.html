@@ -2131,7 +2131,10 @@ cardEl.addEventListener('focusin', (e) => {
 cardEl.addEventListener('focusout', (e) => {
   if (!e.target.matches('input[data-cota]') || !tagEdit) return;
   const { c, before, state } = tagEdit; tagEdit = null;
-  if (c.tag !== before) pushUndo(`Etiqueta de la cota (${before || '–'} → ${c.tag || '–'})`, state);
+  if (c.tag !== before) {
+    if (!cotasCompartidas()) pushUndo(`Etiqueta de la cota (${before || '–'} → ${c.tag || '–'})`, state);
+    if (cotasCompartidas()) avisoAlmacen(almacen.guardarCota(cotaParaGuardar(c)));   // Cerebrus: la etiqueta, para todos
+  }
 });
 cardEl.addEventListener('mouseup', (e) => { if (selectOnUp && e.target === selectOnUp) e.preventDefault(); selectOnUp = null; });
 cardEl.addEventListener('keydown', (e) => {
@@ -2160,7 +2163,7 @@ cardEl.addEventListener('click', (e) => {
   else if (act === 'isolate') { isolateSelected(); lowerSheet(); }
   else if (act === 'hide') hideSelected();
   else if (act === 'measure-off') setMeasure(false);
-  else if (act === 'cotas-clear') { saveUndo('Borrar todas las cotas'); clearCotas(); }
+  else if (act === 'cotas-clear') borrarTodasCotas();   // Cerebrus: en un plano compartido, solo las que uno puede
   else if (act === 'cota-del') deleteCota(+b.dataset.i);
   else if (act === 'note-add') startNoteAdd();
   else if (act === 'note-edit') { const n = notes.find((x) => x.id === +b.dataset.note); if (n) { noteEdit = { mode: 'edit', id: n.id, draft: n.text, tipo: tipoDe(n), etapa: n.etapa || null, fotos: (n.fotos || []).slice() }; renderCard(); } }
@@ -2985,13 +2988,23 @@ function measureClick(x, y, shift) {
   }
   const info = measureInfo(pendingA, s.p, shift);
   if (info.value < 0.05) return;
-  saveUndo(`Cota de ${mm(info.value)} mm`);
-  addCota(pendingA, info);
+  if (!cotasCompartidas()) saveUndo(`Cota de ${mm(info.value)} mm`);   // Cerebrus: compartida = se borra con ✕, no con deshacer
+  const nueva = addCota(pendingA, info);
+  if (cotasCompartidas()) {   // Cerebrus: la medida queda en el plano para todos (Coco, 24/11)
+    nueva.autorId = almacen.usuario.id; nueva.autor = almacen.usuario.nombre;
+    avisoAlmacen(almacen.guardarCota(cotaParaGuardar(nueva)));
+  }
   pendingA = null; hideTemp();
   renderCard(); requestRender();
 }
-// n y tag se pasan al rehacer una cota guardada (deshacer); si no, toma el número siguiente
-function addCota(a, info, n, tag) {
+// Cerebrus: la cota como se guarda en el almacén (coordenadas del plano en arreglos)
+const nuevoUuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => { const r = Math.random() * 16 | 0; return (ch === 'x' ? r : (r & 3 | 8)).toString(16); }));
+const cotaParaGuardar = (c) => ({ uuid: c.uuid, n: c.n, tag: c.tag, a: c.a.toArray(), b: c.b.toArray(), real: (c.real || c.b).toArray(), value: c.value, axis: c.axis || '', d: (c.d || [0, 0, 0]).slice() });
+const cotasCompartidas = () => !!(almacen && almacen.guardarCota && almacen.cotasOk !== false);   // sin el SQL 044: como antes, solo en esta pantalla
+const puedeBorrarCota = (c) => !cotasCompartidas() || !almacen.puedeBorrarCota || almacen.puedeBorrarCota(c);
+// n y tag se pasan al rehacer una cota guardada (deshacer); si no, toma el número siguiente.
+// extra (Cerebrus) = { uuid, autorId, autor } de una cota que vino del almacén
+function addCota(a, info, n, tag, extra) {
   const grp = new THREE.Group();
   const line = makeLine(measLineMat); setLine(line, a, info.end);
   const ends = makeEnds(); setEnds(ends, a, info.end);
@@ -3006,8 +3019,11 @@ function addCota(a, info, n, tag) {
   const chip = document.createElement('div');
   chip.className = 'cota-chip'; chip.innerHTML = chipHTML(tag, info);
   labelsEl.append(chip);
-  cotas.push({ n, tag, a: a.clone(), b: info.end.clone(), real: info.real.clone(), value: info.value, axis: info.axis, d: info.d, grp, chip });
+  const c = { n, tag, a: a.clone(), b: info.end.clone(), real: info.real.clone(), value: info.value, axis: info.axis, d: info.d, grp, chip,
+    uuid: (extra && extra.uuid) || nuevoUuid(), autorId: (extra && extra.autorId) || null, autor: (extra && extra.autor) || '' };
+  cotas.push(c);
   updateMeasureBtn();
+  return c;
 }
 function dropCota(c) {
   measureRoot.remove(c.grp);
@@ -3016,9 +3032,22 @@ function dropCota(c) {
 }
 function deleteCota(i) {
   const c = cotas[i]; if (!c) return;
-  saveUndo(`Borrar la cota ${c.tag || c.n}`);
+  if (!puedeBorrarCota(c)) { toast(`La cota ${c.tag || c.n} la hizo ${c.autor || 'otra persona'}: solo ella o un jefe la pueden borrar.`, 'error'); return; }   // Cerebrus
+  if (!cotasCompartidas()) saveUndo(`Borrar la cota ${c.tag || c.n}`);
   dropCota(c); cotas.splice(i, 1);
+  if (cotasCompartidas()) avisoAlmacen(almacen.borrarCota(c.uuid));   // Cerebrus: se borra para todos
   updateMeasureBtn(); renderCard(); requestRender();
+}
+// Cerebrus: "Borrar todas las cotas" en un plano compartido borra solo las que uno puede (las suyas; un jefe, todas)
+function borrarTodasCotas() {
+  if (!cotasCompartidas()) { saveUndo('Borrar todas las cotas'); clearCotas(); return; }
+  const mias = cotas.filter(puedeBorrarCota), quedan = cotas.length - mias.length;
+  if (!mias.length) { toast('Esas cotas las hicieron otras personas: solo ellas o un jefe las pueden borrar.', 'error'); return; }
+  if (!confirm(`¿Borrar ${mias.length === cotas.length ? 'todas las cotas' : mias.length + (mias.length === 1 ? ' cota tuya' : ' cotas tuyas')} de este plano? Se borran para todos.`)) return;
+  mias.forEach((c) => { dropCota(c); avisoAlmacen(almacen.borrarCota(c.uuid)); });
+  cotas = cotas.filter((c) => !mias.includes(c));
+  pendingA = null; hideTemp(); updateMeasureBtn(); if (measuring) renderCard(); requestRender();
+  if (quedan) toast(`Quedan ${quedan} ${quedan === 1 ? 'cota' : 'cotas'} de otras personas.`);
 }
 function clearCotas() {
   cotas.forEach(dropCota);
@@ -3457,7 +3486,7 @@ function captureState() {
     hidden: model.pieces.filter((p) => p.hidden).map((p) => p.i),
     layersVis: model.layers.map((L) => L.visible),
     layerColors: model.layers.map((L) => (L.custom ? L.hex : null)),
-    cotas: cotas.map((c) => ({ n: c.n, tag: c.tag, a: c.a.clone(), b: c.b.clone(), real: (c.real || c.b).clone(), value: c.value, axis: c.axis, d: c.d.slice() })),
+    cotas: cotasCompartidas() ? null : cotas.map((c) => ({ n: c.n, tag: c.tag, a: c.a.clone(), b: c.b.clone(), real: (c.real || c.b).clone(), value: c.value, axis: c.axis, d: c.d.slice(), uuid: c.uuid })),   // Cerebrus: compartidas = no se deshacen
     cotaN,
     notes: almacen ? null : notes.map((n) => ({ ...n, pin: undefined, center: undefined, pieces: n.pieces.slice() })),
     noteSeq,
@@ -3478,10 +3507,12 @@ function restoreState(s) {
   for (const p of model.pieces) p.hidden = hid.has(p.i);
   model.layers.forEach((L, i) => { L.visible = s.layersVis[i]; });
   model.layers.forEach((L, i) => { if ((L.custom ? L.hex : null) !== s.layerColors[i]) setLayerColor(i, s.layerColors[i]); });
-  cotas.forEach(dropCota); cotas = [];
-  pendingA = null; hideTemp();
-  for (const c of s.cotas) addCota(c.a, { end: c.b, real: c.real, axis: c.axis, value: c.value, d: c.d }, c.n, c.tag);
-  cotaN = s.cotaN;
+  if (s.cotas) {
+    cotas.forEach(dropCota); cotas = [];
+    pendingA = null; hideTemp();
+    for (const c of s.cotas) addCota(c.a, { end: c.b, real: c.real, axis: c.axis, value: c.value, d: c.d }, c.n, c.tag, { uuid: c.uuid });
+    cotaN = s.cotaN;
+  }
   updateMeasureBtn();
   if (s.notes) { notes = s.notes.map((n) => ({ ...n, pieces: n.pieces.slice() })); noteSeq = s.noteSeq || 0; }
   // Cerebrus: volver los módulos a donde estaban (y avisarle a Cerebrus para que lo guarde)
@@ -3548,13 +3579,14 @@ function measureCardHTML() {
   const list = cotas.length
     ? `<ol class="cotas">${cotas.map((c, i) => `<li><input class="cn" type="text" value="${esc(c.tag)}" placeholder="${c.n}" maxlength="6" data-cota="${i}" autocomplete="off" spellcheck="false" aria-label="Etiqueta de la cota ${c.n}" title="Escribí un número o una letra (R = Rafix, M = Minifix)">
         <span class="cv"><b>${mm(c.value)}</b> mm${c.axis ? ` <span class="cax">recta en ${c.axis}</span>` : ''}</span>
-        <span class="cd">${c.axis ? 'Medida sobre un solo eje' : `X ${mm(c.d[0])} · Y ${mm(c.d[1])} · Z ${mm(c.d[2])}`}</span>
-        <button type="button" class="x" data-act="cota-del" data-i="${i}" aria-label="Borrar la cota ${c.n}">×</button></li>`).join('')}</ol>`
+        <span class="cd">${c.axis ? 'Medida sobre un solo eje' : `X ${mm(c.d[0])} · Y ${mm(c.d[1])} · Z ${mm(c.d[2])}`}${c.autor ? ' · ' + esc(c.autor) : ''}</span>
+        ${puedeBorrarCota(c) ? `<button type="button" class="x" data-act="cota-del" data-i="${i}" aria-label="Borrar la cota ${c.n}">×</button>` : ''}</li>`).join('')}</ol>`
     : '<p class="mempty">Todavía no hay cotas.</p>';
   return `<div class="card-head"><span class="eyebrow">Medir</span><button class="x" type="button" data-act="measure-off" aria-label="Dejar de medir">×</button></div>
     <p class="mstep">${step}</p>
     <ul class="snaps" aria-label="Dónde se pega el punto">${['vertex', 'mid', 'edge', 'face', 'eje', 'ejemid'].map((k) => `<li>${SNAP_SVG[k]}${SNAP_LABEL[k]}</li>`).join('')}</ul>
     <p class="mhint">Con <kbd>Shift</kbd> apretado la cota va recta en X, Y o Z: sirve para luces interiores y alturas. Si hay esquinas muy juntas, acercate con la rueda antes de marcar.</p>
+    ${cotasCompartidas() ? '<p class="mhint">📌 Las cotas de este plano quedan guardadas y las ven todos los que ven la obra.</p>' : ''}
     ${list}
     ${cotas.length ? `<p class="mhint">Para marcar la unión, hacé click en el número de la cota y escribí una letra: <b>R</b> Rafix, <b>M</b> Minifix.</p>
     <div class="actions"><button class="btn small" type="button" data-act="cotas-clear">Borrar todas las cotas</button></div>` : ''}`;
@@ -4805,6 +4837,33 @@ async function conectarAlmacen(alm) {
     notesChanged(false);
     if (!noteEdit) renderCard();
   });
+  // Cerebrus: las medidas del plano, para todos y en vivo (Coco, 24/11)
+  if (alm.cargarCotas) {
+    let listaC = [];
+    try { listaC = await alm.cargarCotas(); } catch (e) { console.error(e); }
+    if (almacen !== alm) return false;
+    const V = (v) => new THREE.Vector3(+v[0], +v[1], +v[2]);
+    const ponerCota = (c) => addCota(V(c.a), { end: V(c.b), real: V(c.real || c.b), axis: c.axis || '', value: +c.value, d: Array.from(c.d || [0, 0, 0], Number) }, c.n, c.tag, c);
+    const locales = cotas.filter((c) => !c.autorId);   // las que se hicieron antes de conectar (no deberían quedar) se descartan
+    locales.forEach(dropCota);
+    cotas = []; pendingA = null; hideTemp();
+    listaC.forEach(ponerCota);
+    cotaN = cotas.reduce((mx, c) => Math.max(mx, c.n || 0), 0);
+    updateMeasureBtn(); if (measuring) renderCard(); requestRender();
+    const corteNotas = almacenCorte;
+    const corteCotas = alm.escucharCotas ? alm.escucharCotas((ch) => {
+      if (almacen !== alm || !model) return;
+      const i = cotas.findIndex((x) => x.uuid === (ch.uuid || (ch.cota && ch.cota.uuid)));
+      if (ch.borrada) { if (i >= 0) { dropCota(cotas[i]); cotas.splice(i, 1); } }
+      else if (ch.cota) {
+        if (i >= 0) { if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.cota === String(i)) return;   // la está escribiendo esta persona
+          cotas[i].tag = ch.cota.tag; cotas[i].chip.innerHTML = chipHTML(cotas[i].tag, cotas[i]); }
+        else { ponerCota(ch.cota); cotaN = Math.max(cotaN, ch.cota.n || 0); }
+      }
+      updateMeasureBtn(); if (measuring && !(document.activeElement && document.activeElement.matches && document.activeElement.matches('input[data-cota]'))) renderCard(); requestRender();
+    }) : null;
+    almacenCorte = () => { if (corteNotas) corteNotas(); if (corteCotas) corteCotas(); };
+  }
   return true;
 }
 /* Cerebrus: abrir un modelo armado en memoria por Cerebrus (la cocina del presupuesto, un módulo suelto).

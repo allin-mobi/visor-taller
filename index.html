@@ -278,6 +278,13 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .lrow .lname:hover { color: var(--accent); }
 .lrow.off .lname, .lrow.off .sw { opacity: .4; }
 .lrow .lcount { font: 500 12px var(--font-num); color: var(--muted); }
+/* Cerebrus: fila de la pestaña Cotas */
+.crow { display: grid; grid-template-columns: 32px auto minmax(0, 1fr); gap: 8px; align-items: center; padding: 5px 12px 5px 8px; }
+.crow:hover { background: var(--paper); }
+.crow .ctag { min-width: 30px; padding: 2px 6px; border-radius: 4px; background: var(--measure); color: var(--measure-ink); font: 700 12px/1.2 var(--font-num); text-align: center; }
+.crow .cinfo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 13px var(--font-num); }
+.crow .cinfo small { font-family: var(--font-ui); color: var(--muted); font-weight: 400; }
+.crow.off .ctag, .crow.off .cinfo { opacity: .4; }
 .layer-actions { display: flex; gap: 8px; padding: 12px; }
 
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: min(560px, calc(100% - 32px)); padding: 11px 16px; border-radius: var(--r); background: var(--ink); color: var(--panel); box-shadow: 0 6px 20px rgb(0 0 0 / .2); z-index: 20; font-size: 14px; }
@@ -840,6 +847,7 @@ div.note-hint { text-align: right; margin-top: 4px; }
         <button type="button" role="tab" id="tab-pieces" aria-selected="true" aria-controls="panel-pieces">Piezas <span class="count" id="count-pieces"></span></button>
         <button type="button" role="tab" id="tab-layers" aria-selected="false" aria-controls="panel-layers">Capas <span class="count" id="count-layers"></span></button>
         <button type="button" role="tab" id="tab-notes" aria-selected="false" aria-controls="panel-notes">Notas <span class="count note-count" id="count-notes"></span></button>
+        <button type="button" role="tab" id="tab-cotas" aria-selected="false" aria-controls="panel-cotas">Cotas <span class="count" id="count-cotas"></span></button><!-- Cerebrus -->
       </div>
       <div class="panel" id="panel-pieces" role="tabpanel" aria-labelledby="tab-pieces">
         <div class="search">
@@ -858,6 +866,15 @@ div.note-hint { text-align: right; margin-top: 4px; }
       </div>
       <div class="panel" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" hidden>
         <div class="list" id="notes-list"></div>
+      </div>
+      <!-- Cerebrus: las cotas en una lista, con ojito para ocultarlas (Coco, 26/11). Ocultar es solo en esta pantalla. -->
+      <div class="panel" id="panel-cotas" role="tabpanel" aria-labelledby="tab-cotas" hidden>
+        <div class="layer-actions">
+          <button class="btn small" type="button" id="btn-cotas-all">Mostrar todas</button>
+          <button class="btn small" type="button" id="btn-cotas-none">Ocultar todas</button>
+        </div>
+        <p class="layer-hint">Ocultar una cota es solo en tu pantalla: los demás la siguen viendo.</p>
+        <div class="list" id="cotas-list"></div>
       </div>
     </aside>
   </main>
@@ -2127,7 +2144,7 @@ cardEl.addEventListener('input', (e) => {
   inp.value = inp.value.toUpperCase();
   try { inp.setSelectionRange(pos, pos); } catch (err) { /* nada */ }
   c.tag = inp.value.trim();
-  c.chip.innerHTML = chipHTML(c.tag, c);
+  c.chip.innerHTML = chipHTML(c.tag, c); renderCotasTab();   // Cerebrus
 });
 // para deshacer el cambio de etiqueta: se anota cómo estaba al entrar al campo y se guarda al salir si cambió
 let tagEdit = null;
@@ -2544,7 +2561,7 @@ $('#btn-layers-all').addEventListener('click', () => { if (!model) return; saveU
 $('#btn-layers-none').addEventListener('click', () => { if (!model) return; saveUndo('Apagar todas las capas'); model.layers.forEach((L) => (L.visible = false)); sel.clear(); applyVisibility(); refreshSelection(); });
 
 function showTab(which) {
-  for (const t of ['pieces', 'layers', 'notes']) {
+  for (const t of ['pieces', 'layers', 'notes', 'cotas']) {   // Cerebrus: + cotas
     $('#tab-' + t).setAttribute('aria-selected', String(t === which));
     $('#panel-' + t).hidden = t !== which;
   }
@@ -2552,6 +2569,7 @@ function showTab(which) {
 $('#tab-pieces').addEventListener('click', () => showTab('pieces'));
 $('#tab-layers').addEventListener('click', () => showTab('layers'));
 $('#tab-notes').addEventListener('click', () => showTab('notes'));
+$('#tab-cotas').addEventListener('click', () => showTab('cotas'));   // Cerebrus
 
 /* ---------------------------------------------------------------------
    Mouse sobre el modelo
@@ -2952,8 +2970,8 @@ function measureInfo(a, p, lock) {
   const k = model.toMM;
   return { end, real: p.clone(), axis, value: a.distanceTo(end) * k, d: [Math.abs(end.x - a.x) * k, Math.abs(end.y - a.y) * k, Math.abs(end.z - a.z) * k] };
 }
-// Cerebrus: sin la "· X/Y/Z" de las cotas rectas (Coco, 26/11: ocupaba mucho lugar)
-const chipHTML = (tag, info) => `${tag ? `<i>${esc(tag)}</i>` : ''}<b>${mm(info.value)}</b>mm`;
+// Cerebrus: sin la "· X/Y/Z" ni el "mm" (Coco, 26/11: ocupaban mucho lugar; todo Iris mide en mm)
+const chipHTML = (tag, info) => `${tag ? `<i>${esc(tag)}</i>` : ''}<b>${mm(info.value)}</b>`;
 
 // Cerebrus: 3er paso de la cota (Coco, 26/11): la línea se corre en perpendicular a la medida, como en Rhino.
 // Se mide sobre el plano que contiene la cota y mira más de frente a la pantalla; con un imán fuerte (esquina,
@@ -3143,14 +3161,14 @@ function editarEtiquetaChip(c) {
   if (c.chip.querySelector('input')) return;
   const antes = c.tag, state = cotasCompartidas() ? null : captureState();
   c.chip.classList.add('editando');
-  c.chip.innerHTML = `<input class="cota-tag" type="text" maxlength="6" value="${esc(c.tag)}" placeholder="${c.n}" aria-label="Etiqueta de la cota ${c.n}" autocomplete="off" spellcheck="false"><b>${mm(c.value)}</b>mm`;
+  c.chip.innerHTML = `<input class="cota-tag" type="text" maxlength="6" value="${esc(c.tag)}" placeholder="${c.n}" aria-label="Etiqueta de la cota ${c.n}" autocomplete="off" spellcheck="false"><b>${mm(c.value)}</b>`;
   const inp = c.chip.querySelector('input');
   inp.focus(); inp.select();
   let listo = false;
   const fin = (guardar) => {
     if (listo) return; listo = true;
     if (guardar) c.tag = inp.value.trim().toUpperCase();
-    c.chip.classList.remove('editando'); c.chip.innerHTML = chipHTML(c.tag, c);
+    c.chip.classList.remove('editando'); c.chip.innerHTML = chipHTML(c.tag, c); renderCotasTab();
     if (c.tag !== antes) {
       if (cotasCompartidas()) { avisoAlmacen(almacen.guardarCota(cotaParaGuardar(c))); pushCotaUndo(`Etiqueta de la cota (${antes || '–'} → ${c.tag || '–'})`, { tipo: 'etiqueta', uuid: c.uuid, antes, despues: c.tag }); }   // la etiqueta, para todos
       else pushUndo(`Etiqueta de la cota (${antes || '–'} → ${c.tag || '–'})`, state);
@@ -3199,7 +3217,25 @@ function clearCotas() {
 }
 function updateMeasureBtn() {
   $('#btn-measure-lbl').textContent = cotas.length ? `Medir · ${cotas.length}` : 'Medir';
+  renderCotasTab();   // Cerebrus
 }
+// Cerebrus: pestaña Cotas — una fila por cota con su ojito (Coco, 26/11). Oculta = solo en esta pantalla (c.oculta).
+function verCota(c) { c.grp.visible = !c.oculta; c.chip.hidden = !!c.oculta; }
+function renderCotasTab() {
+  const el = $('#cotas-list'); if (!el) return;
+  const ocultas = cotas.filter((c) => c.oculta).length;
+  $('#count-cotas').textContent = cotas.length ? (ocultas ? `${cotas.length - ocultas}/${cotas.length}` : cotas.length) : '';
+  el.innerHTML = cotas.length ? cotas.map((c, i) => `<div class="crow${c.oculta ? ' off' : ''}"><button type="button" class="eye" data-cota-ver="${i}" aria-label="${c.oculta ? 'Mostrar' : 'Ocultar'} la cota ${esc(c.tag || String(c.n))}" title="${c.oculta ? 'Mostrar' : 'Ocultar'}">${c.oculta ? ICON_EYE_OFF : ICON_EYE}</button>
+    <span class="ctag">${esc(c.tag || String(c.n))}</span><span class="cinfo">${mm(c.value)} mm <small>${c.axis ? 'recta en ' + c.axis : 'inclinada'}${c.autor ? ' · ' + esc(c.autor) : ''}</small></span></div>`).join('')
+    : '<p class="notes-empty">Todavía no hay cotas. Se hacen con el botón Medir.</p>';
+}
+function ocultarCotas(cuales, oculta) { cuales.forEach((c) => { c.oculta = oculta; verCota(c); }); renderCotasTab(); requestRender(); }
+$('#cotas-list').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cota-ver]'); if (!b) return;
+  const c = cotas[+b.dataset.cotaVer]; if (c) ocultarCotas([c], !c.oculta);
+});
+$('#btn-cotas-all').addEventListener('click', () => ocultarCotas(cotas, false));
+$('#btn-cotas-none').addEventListener('click', () => ocultarCotas(cotas, true));
 
 /* ---------------------------------------------------------------------
    Anotaciones sobre una pieza, varias o un mueble entero.
@@ -3649,9 +3685,11 @@ function restoreState(s) {
   model.layers.forEach((L, i) => { L.visible = s.layersVis[i]; });
   model.layers.forEach((L, i) => { if ((L.custom ? L.hex : null) !== s.layerColors[i]) setLayerColor(i, s.layerColors[i]); });
   if (s.cotas) {
+    const ocultas = new Set(cotas.filter((c) => c.oculta).map((c) => c.uuid));   // Cerebrus: lo oculto sigue oculto
     cotas.forEach(dropCota); cotas = [];
     pendingA = null; hideTemp();
     for (const c of s.cotas) addCota(c.a, { end: c.b, real: c.real, axis: c.axis, value: c.value, d: c.d, off: c.off }, c.n, c.tag, { uuid: c.uuid });
+    cotas.forEach((c) => { if (ocultas.has(c.uuid)) { c.oculta = true; verCota(c); } });
     cotaN = s.cotaN;
   }
   updateMeasureBtn();
@@ -4030,11 +4068,12 @@ function drawCotaLabels(g, s, ow, oh, pen) {
   const fs = 13 * s, pad = 5 * s, fam = '"IBM Plex Mono", Consolas, monospace';
   const meas = '#d4381c';   // sobre papel blanco, siempre el rojo fuerte
   for (const c of cotas) {
+    if (c.oculta) continue;   // Cerebrus: oculta en la pestaña Cotas = no se imprime
     _p.addVectors(c.a, c.b).multiplyScalar(0.5).add(c.off).project(cam);
     if (_p.z > 1 || _p.z < -1) continue;
     const x = ((_p.x + 1) / 2) * ow, y = ((1 - _p.y) / 2) * oh;
     if (x < 0 || y < 0 || x > ow || y > oh) continue;
-    const val = `${mm(c.value)} mm`;   // Cerebrus: sin X/Y/Z
+    const val = `${mm(c.value)}`;   // Cerebrus: sin X/Y/Z ni mm
     g.font = `600 ${fs}px ${fam}`;
     const vw = g.measureText(val).width;
     let tw = 0;

@@ -2940,7 +2940,8 @@ function snapAt(x, y) {
   return faceHit ? { kind: 'face', p: faceHit.point.clone() } : null;
 }
 
-// con Shift la cota va recta sobre el eje (X, Y o Z) donde más se movió
+// la cota va recta sobre el eje (X, Y o Z) donde más se movió; con Shift, inclinada (libre)
+// Cerebrus: antes era al revés; Coco (26/11) las quiere "planares", sin cotas cruzadas en diagonal
 function measureInfo(a, p, lock) {
   let end = p.clone(), axis = '';
   if (lock) {
@@ -2992,8 +2993,8 @@ function dibujarTemp(a, info, off) {
   tempEnd = info.end; tempOff = off.clone();
   setLine(tempLine, a2, b2); setEnds(tempEnds, a2, b2);
   const at = tempExt.geometry.attributes.position;
-  at.setXYZ(0, a.x, a.y, a.z); at.setXYZ(1, a2.x, a2.y, a2.z); at.setXYZ(2, info.end.x, info.end.y, info.end.z); at.setXYZ(3, b2.x, b2.y, b2.z);
-  at.needsUpdate = true; tempExt.visible = off.lengthSq() > 0;
+  at.setXYZ(0, a.x, a.y, a.z); at.setXYZ(1, a2.x, a2.y, a2.z); at.setXYZ(2, info.real.x, info.real.y, info.real.z); at.setXYZ(3, b2.x, b2.y, b2.z);
+  at.needsUpdate = true; tempExt.visible = off.lengthSq() > 0 || info.real.distanceTo(info.end) > 1e-6;
   tempGrp.visible = true;
   tempChip.innerHTML = chipHTML('', info); tempChip.hidden = info.value < 0.05;
 }
@@ -3029,7 +3030,7 @@ function measureMove(x, y, shift) {
   }
   const s = snapAt(x, y);
   showSnap(s);
-  if (pendingA && s) dibujarTemp(pendingA, measureInfo(pendingA, s.p, shift), new THREE.Vector3());
+  if (pendingA && s) dibujarTemp(pendingA, measureInfo(pendingA, s.p, !shift), new THREE.Vector3());   // Cerebrus: recta salvo con Shift
   else if (!pendingA) hideTemp();
   requestRender();
 }
@@ -3049,7 +3050,7 @@ function measureClick(x, y, shift) {
     measureMove(x, y, shift);
     return;
   }
-  const info = measureInfo(pendingA, s.p, shift);
+  const info = measureInfo(pendingA, s.p, !shift);   // Cerebrus: recta salvo con Shift
   if (info.value < 0.05) return;
   pendingInfo = info;   // Cerebrus: falta el 3er paso
   renderCard();
@@ -3097,9 +3098,9 @@ function dibujarCota(c) {
   const line = makeLine(measLineMat); setLine(line, a2, b2);
   const ends = makeEnds(); setEnds(ends, a2, b2);
   c.grp.add(line, ends);
-  const segs = [];
-  if (c.axis && c.real.distanceTo(c.b) > 1e-6) segs.push(c.b, c.real);
-  if (c.off.lengthSq() > 0) segs.push(c.a, a2, c.b, b2);
+  const segs = [];   // de cada punto medido hasta la punta de la línea (el 2° punto puede no estar sobre el eje)
+  if (c.off.lengthSq() > 0) segs.push(c.a, a2);
+  if (c.real.distanceTo(b2) > 1e-6) segs.push(c.real, b2);
   if (segs.length) {
     const ext = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(segs), measExtMat);
     ext.renderOrder = 10; ext.frustumCulled = false; c.grp.add(ext);
@@ -3773,7 +3774,7 @@ function measureCardHTML() {
   return `<div class="card-head"><span class="eyebrow">Medir</span><button class="x" type="button" data-act="measure-off" aria-label="Dejar de medir">×</button></div>
     <p class="mstep">${step}</p>
     <ul class="snaps" aria-label="Dónde se pega el punto">${['vertex', 'mid', 'edge', 'face', 'eje', 'ejemid'].map((k) => `<li>${SNAP_SVG[k]}${SNAP_LABEL[k]}</li>`).join('')}</ul>
-    <p class="mhint">Con <kbd>Shift</kbd> apretado la cota va recta en X, Y o Z: sirve para luces interiores y alturas. Si hay esquinas muy juntas, acercate con la rueda antes de marcar.</p>
+    <p class="mhint">La cota sale recta en X, Y o Z (hacia donde más te moviste), como el Orto de Rhino. Con <kbd>Shift</kbd> apretado sale inclinada, de punto a punto (por ejemplo, una diagonal). Si hay esquinas muy juntas, acercate con la rueda antes de marcar.</p>
     ${cotasCompartidas() ? '<p class="mhint">📌 Las cotas de este plano quedan guardadas y las ven todos los que ven la obra. <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace la última (también para todos).</p>' : ''}
     ${list}
     ${cotas.length ? `<p class="mhint">Para marcar la unión, hacé <b>doble click en el número</b> de la cota (en el dibujo o acá) y escribí una letra: <b>R</b> Rafix, <b>M</b> Minifix. Para <b>correr</b> una cota, agarrá su número y arrastralo.</p>

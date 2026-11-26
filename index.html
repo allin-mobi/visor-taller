@@ -282,6 +282,8 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: min(560px, calc(100% - 32px)); padding: 11px 16px; border-radius: var(--r); background: var(--ink); color: var(--panel); box-shadow: 0 6px 20px rgb(0 0 0 / .2); z-index: 20; font-size: 14px; }
 .toast.error { background: var(--danger-soft); color: var(--danger-ink); border: 1px solid currentColor; }
+/* Cerebrus: con la barra de comandos abajo (compu), el aviso sale arriba del dibujo para no taparla (Coco, 26/11) */
+.cb-abajo .toast { bottom: auto; top: 64px; }
 
 /* ---------- medir (cotas) ---------- */
 #btn-measure[aria-pressed="true"] { background: var(--measure); border-color: var(--measure); color: var(--measure-ink); }
@@ -290,6 +292,12 @@ kbd { font: 500 12px/1 var(--font-num); padding: 3px 6px; border: 1px solid var(
 .cota-chip b { font-size: 15px; font-weight: 600; }
 .cota-chip i { font-style: normal; font-size: 12px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: var(--measure-ink); color: var(--measure); margin-right: 3px; align-self: center; }
 .cota-chip.live { background: var(--panel); color: var(--measure); border: 1.5px dashed var(--measure); }
+/* Cerebrus: el número de la cota se agarra (arrastrar = correrla) y con doble click se cambia la etiqueta (Coco, 26/11) */
+.cota-chip:not(.live) { pointer-events: auto; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.cota-chip.arrastrando { cursor: grabbing; box-shadow: 0 0 0 2px #fff, 0 2px 8px rgb(0 0 0 / .35); }
+.labels.cota-en-curso .cota-chip { pointer-events: none; }
+.cota-chip.editando { cursor: auto; user-select: auto; -webkit-user-select: auto; }
+.cota-chip .cota-tag { width: 3.2em; padding: 1px 4px; border: 0; border-radius: 3px; background: #fff; color: #1a1a1a; font: 700 12px/1.2 var(--font-num); text-transform: uppercase; text-align: center; outline: 2px solid var(--measure-ink); }
 .snap { position: absolute; z-index: 4; pointer-events: none; display: flex; align-items: center; gap: 5px; transform: translate(-8px, -8px); color: var(--measure); }
 .snap-ico, .snap-ico svg { width: 16px; height: 16px; display: block; }
 .snap-ico svg { filter: drop-shadow(0 0 1px var(--panel)) drop-shadow(0 0 1px var(--panel)); }
@@ -1200,6 +1208,7 @@ let visibleMeshes = [];
 let currentView = 'persp';
 let measuring = false;     // herramienta Medir prendida
 let pendingA = null;       // primer punto de la cota en curso
+let pendingInfo = null;    // Cerebrus: segundo punto ya marcado → falta ubicar la línea (3er paso, Coco 26/11)
 let cotas = [];            // cotas hechas
 let cotaN = 0;
 let lastSnap = null, lastPtr = null, tempEnd = null;
@@ -2133,7 +2142,7 @@ cardEl.addEventListener('focusout', (e) => {
   const { c, before, state } = tagEdit; tagEdit = null;
   if (c.tag !== before) {
     if (!cotasCompartidas()) pushUndo(`Etiqueta de la cota (${before || '–'} → ${c.tag || '–'})`, state);
-    if (cotasCompartidas()) avisoAlmacen(almacen.guardarCota(cotaParaGuardar(c)));   // Cerebrus: la etiqueta, para todos
+    if (cotasCompartidas()) { avisoAlmacen(almacen.guardarCota(cotaParaGuardar(c))); pushCotaUndo(`Etiqueta de la cota (${before || '–'} → ${c.tag || '–'})`, { tipo: 'etiqueta', uuid: c.uuid, antes: before, despues: c.tag }); }   // Cerebrus: la etiqueta, para todos
   }
 });
 cardEl.addEventListener('mouseup', (e) => { if (selectOnUp && e.target === selectOnUp) e.preventDefault(); selectOnUp = null; });
@@ -2822,6 +2831,10 @@ function setEnds(pts, a, b) {
 }
 const tempLine = makeLine(tempLineMat), tempEnds = makeEnds();
 const tempGrp = new THREE.Group(); tempGrp.add(tempLine, tempEnds); tempGrp.visible = false;
+// Cerebrus: líneas de referencia de la cota corrida (de cada punto medido a la línea de la cota)
+const tempExt = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(12), 3)), measExtMat);
+tempExt.renderOrder = 10; tempExt.frustumCulled = false; tempExt.visible = false; tempGrp.add(tempExt);
+let tempOff = new THREE.Vector3();
 measureRoot.add(tempGrp);
 const tempChip = document.createElement('div'); tempChip.className = 'cota-chip live'; tempChip.hidden = true;
 labelsEl.append(tempChip);
@@ -2938,7 +2951,52 @@ function measureInfo(a, p, lock) {
   const k = model.toMM;
   return { end, real: p.clone(), axis, value: a.distanceTo(end) * k, d: [Math.abs(end.x - a.x) * k, Math.abs(end.y - a.y) * k, Math.abs(end.z - a.z) * k] };
 }
-const chipHTML = (tag, info) => `${tag ? `<i>${esc(tag)}</i>` : ''}<b>${mm(info.value)}</b>mm${info.axis ? ` · ${info.axis}` : ''}`;
+// Cerebrus: sin la "· X/Y/Z" de las cotas rectas (Coco, 26/11: ocupaba mucho lugar)
+const chipHTML = (tag, info) => `${tag ? `<i>${esc(tag)}</i>` : ''}<b>${mm(info.value)}</b>mm`;
+
+// Cerebrus: 3er paso de la cota (Coco, 26/11): la línea se corre en perpendicular a la medida, como en Rhino.
+// Se mide sobre el plano que contiene la cota y mira más de frente a la pantalla; con un imán fuerte (esquina,
+// mitad, centro del canto) la línea se alinea con ese punto. A menos de 6 px de la medida no se corre.
+const _o1 = new THREE.Vector3(), _o2 = new THREE.Vector3(), _o3 = new THREE.Vector3(), _oPlane = new THREE.Plane();
+function offsetAt(x, y, a, b) {
+  const off = new THREE.Vector3();
+  const ab = _o1.subVectors(b, a), L = ab.length();
+  if (L < 1e-9) return off;
+  ab.divideScalar(L);
+  const s = snapAt(x, y), fuerte = s && s.rank !== undefined && s.rank <= 1;
+  showSnap(fuerte ? s : null);
+  const r = canvas.getBoundingClientRect();
+  let p = null;
+  if (fuerte) p = s.p;
+  else {
+    cam.updateMatrixWorld();
+    cam.getWorldDirection(_o2);
+    _o2.addScaledVector(ab, -_o2.dot(ab));
+    if (_o2.lengthSq() < 1e-8) return off;   // mirando justo a lo largo de la cota
+    _oPlane.setFromNormalAndCoplanarPoint(_o2.normalize(), a);
+    ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, cam);
+    p = ray.ray.intersectPlane(_oPlane, _o3);
+    if (!p) return off;
+  }
+  off.subVectors(p, a); off.addScaledVector(ab, -off.dot(ab));
+  const m = _o3.addVectors(a, b).multiplyScalar(0.5);
+  _p.copy(m).project(cam); const x0 = _p.x * r.width / 2, y0 = _p.y * r.height / 2;
+  _p.copy(m).add(off).project(cam);
+  if (Math.hypot(_p.x * r.width / 2 - x0, _p.y * r.height / 2 - y0) < 6) off.set(0, 0, 0);
+  return off;
+}
+// la cota en curso: de a hasta info.end, corrida off
+function dibujarTemp(a, info, off) {
+  const a2 = a.clone().add(off), b2 = info.end.clone().add(off);
+  tempEnd = info.end; tempOff = off.clone();
+  setLine(tempLine, a2, b2); setEnds(tempEnds, a2, b2);
+  const at = tempExt.geometry.attributes.position;
+  at.setXYZ(0, a.x, a.y, a.z); at.setXYZ(1, a2.x, a2.y, a2.z); at.setXYZ(2, info.end.x, info.end.y, info.end.z); at.setXYZ(3, b2.x, b2.y, b2.z);
+  at.needsUpdate = true; tempExt.visible = off.lengthSq() > 0;
+  tempGrp.visible = true;
+  tempChip.innerHTML = chipHTML('', info); tempChip.hidden = info.value < 0.05;
+}
 
 function placeAt(el, v) {
   _p.copy(v).project(cam);
@@ -2948,8 +3006,8 @@ function placeAt(el, v) {
   el.style.top = ((1 - _p.y) / 2) * H + 'px';
 }
 function updateMeasureLabels() {
-  for (const c of cotas) placeAt(c.chip, _mid.addVectors(c.a, c.b).multiplyScalar(0.5));
-  if (!tempChip.hidden && pendingA && tempEnd) placeAt(tempChip, _mid.addVectors(pendingA, tempEnd).multiplyScalar(0.5));
+  for (const c of cotas) placeAt(c.chip, _mid.addVectors(c.a, c.b).multiplyScalar(0.5).add(c.off));   // Cerebrus: + corrimiento
+  if (!tempChip.hidden && pendingA && tempEnd) placeAt(tempChip, _mid.addVectors(pendingA, tempEnd).multiplyScalar(0.5).add(tempOff));
   if (!snapEl.hidden && lastSnap) placeAt(snapEl, lastSnap.p);
   if (model) placePins();
 }
@@ -2961,69 +3019,150 @@ function showSnap(s) {
   snapEl.hidden = false;
   placeAt(snapEl, s.p);
 }
-function hideTemp() { tempGrp.visible = false; tempChip.hidden = true; tempEnd = null; }
+function hideTemp() { tempGrp.visible = false; tempExt.visible = false; tempChip.hidden = true; tempEnd = null; tempOff = new THREE.Vector3(); pendingInfo = null; labelsEl.classList.remove('cota-en-curso'); }
 
 function measureMove(x, y, shift) {
   lastPtr = { x, y };
+  if (pendingA && pendingInfo) {   // Cerebrus: 3er paso, la línea sigue al mouse en perpendicular
+    dibujarTemp(pendingA, pendingInfo, offsetAt(x, y, pendingA, pendingInfo.end));
+    requestRender(); return;
+  }
   const s = snapAt(x, y);
   showSnap(s);
-  if (pendingA && s) {
-    const info = measureInfo(pendingA, s.p, shift);
-    tempEnd = info.end;
-    setLine(tempLine, pendingA, info.end); setEnds(tempEnds, pendingA, info.end);
-    tempGrp.visible = true;
-    tempChip.innerHTML = chipHTML('', info); tempChip.hidden = info.value < 0.05;
-  } else if (!pendingA) hideTemp();
+  if (pendingA && s) dibujarTemp(pendingA, measureInfo(pendingA, s.p, shift), new THREE.Vector3());
+  else if (!pendingA) hideTemp();
   requestRender();
 }
 function measureClick(x, y, shift) {
+  if (pendingA && pendingInfo) {   // Cerebrus: 3er paso — dónde queda la línea de la cota (se puede tocar en el vacío)
+    const info = { ...pendingInfo, off: offsetAt(x, y, pendingA, pendingInfo.end) };
+    showSnap(null);
+    return crearCota(info);
+  }
   const s = snapAt(x, y);
   showSnap(s);
   if (!s) return; // click en el vacío: no marca nada
   if (!pendingA) {
     pendingA = s.p.clone();
+    labelsEl.classList.add('cota-en-curso');   // Cerebrus: mientras se marca, los números no se agarran
     renderCard();
     measureMove(x, y, shift);
     return;
   }
   const info = measureInfo(pendingA, s.p, shift);
   if (info.value < 0.05) return;
-  if (!cotasCompartidas()) saveUndo(`Cota de ${mm(info.value)} mm`);   // Cerebrus: compartida = se borra con ✕, no con deshacer
+  pendingInfo = info;   // Cerebrus: falta el 3er paso
+  renderCard();
+  measureMove(x, y, shift);
+}
+function crearCota(info) {
+  if (!cotasCompartidas()) saveUndo(`Cota de ${mm(info.value)} mm`);   // Cerebrus: compartida = se deshace de a una (pushCotaUndo, más abajo)
   const nueva = addCota(pendingA, info);
   if (cotasCompartidas()) {   // Cerebrus: la medida queda en el plano para todos (Coco, 24/11)
     nueva.autorId = almacen.usuario.id; nueva.autor = almacen.usuario.nombre;
     avisoAlmacen(almacen.guardarCota(cotaParaGuardar(nueva)));
+    pushCotaUndo(`Cota de ${mm(info.value)} mm`, { tipo: 'crear', uuid: nueva.uuid, datos: cotaDatos(nueva) });   // Ctrl+Z la borra (Coco, 26/11)
   }
   pendingA = null; hideTemp();
   renderCard(); requestRender();
 }
 // Cerebrus: la cota como se guarda en el almacén (coordenadas del plano en arreglos)
 const nuevoUuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => { const r = Math.random() * 16 | 0; return (ch === 'x' ? r : (r & 3 | 8)).toString(16); }));
-const cotaParaGuardar = (c) => ({ uuid: c.uuid, n: c.n, tag: c.tag, a: c.a.toArray(), b: c.b.toArray(), real: (c.real || c.b).toArray(), value: c.value, axis: c.axis || '', d: (c.d || [0, 0, 0]).slice() });
+const cotaParaGuardar = (c) => ({ uuid: c.uuid, n: c.n, tag: c.tag, a: c.a.toArray(), b: c.b.toArray(), real: (c.real || c.b).toArray(), value: c.value, axis: c.axis || '', d: (c.d || [0, 0, 0]).slice(), off: (c.off || new THREE.Vector3()).toArray() });
 const cotasCompartidas = () => !!(almacen && almacen.guardarCota && almacen.cotasOk !== false);   // sin el SQL 044: como antes, solo en esta pantalla
 const puedeBorrarCota = (c) => !cotasCompartidas() || !almacen.puedeBorrarCota || almacen.puedeBorrarCota(c);
 // n y tag se pasan al rehacer una cota guardada (deshacer); si no, toma el número siguiente.
 // extra (Cerebrus) = { uuid, autorId, autor } de una cota que vino del almacén
 function addCota(a, info, n, tag, extra) {
   const grp = new THREE.Group();
-  const line = makeLine(measLineMat); setLine(line, a, info.end);
-  const ends = makeEnds(); setEnds(ends, a, info.end);
-  grp.add(line, ends);
-  if (info.axis && info.real.distanceTo(info.end) > 1e-6) {
-    const ext = new THREE.Line(new THREE.BufferGeometry().setFromPoints([info.end, info.real]), measExtMat);
-    ext.renderOrder = 10; ext.frustumCulled = false; grp.add(ext);
-  }
   measureRoot.add(grp);
   if (n === undefined) n = ++cotaN;
   if (tag === undefined) tag = String(n);
   const chip = document.createElement('div');
   chip.className = 'cota-chip'; chip.innerHTML = chipHTML(tag, info);
+  chip.title = 'Arrastrá para correr la cota · doble click para cambiar la etiqueta';   // Cerebrus
   labelsEl.append(chip);
   const c = { n, tag, a: a.clone(), b: info.end.clone(), real: info.real.clone(), value: info.value, axis: info.axis, d: info.d, grp, chip,
+    off: info.off ? info.off.clone() : new THREE.Vector3(),   // Cerebrus: corrimiento de la línea (perpendicular a la medida)
     uuid: (extra && extra.uuid) || nuevoUuid(), autorId: (extra && extra.autorId) || null, autor: (extra && extra.autor) || '' };
+  dibujarCota(c);
   cotas.push(c);
   updateMeasureBtn();
   return c;
+}
+// Cerebrus: (re)arma las líneas de una cota: la medida corrida + las de referencia hasta los puntos medidos
+function dibujarCota(c) {
+  c.grp.children.slice().forEach((o) => { c.grp.remove(o); if (o.geometry) o.geometry.dispose(); });
+  const a2 = c.a.clone().add(c.off), b2 = c.b.clone().add(c.off);
+  const line = makeLine(measLineMat); setLine(line, a2, b2);
+  const ends = makeEnds(); setEnds(ends, a2, b2);
+  c.grp.add(line, ends);
+  const segs = [];
+  if (c.axis && c.real.distanceTo(c.b) > 1e-6) segs.push(c.b, c.real);
+  if (c.off.lengthSq() > 0) segs.push(c.a, a2, c.b, b2);
+  if (segs.length) {
+    const ext = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(segs), measExtMat);
+    ext.renderOrder = 10; ext.frustumCulled = false; c.grp.add(ext);
+  }
+}
+
+// Cerebrus: agarrar el número de una cota y arrastrarlo = correr la línea; doble click = cambiar la etiqueta (Coco, 26/11)
+let chipDrag = null;
+labelsEl.addEventListener('pointerdown', (e) => {
+  const chip = e.target.closest('.cota-chip');
+  if (!chip || chip.classList.contains('live') || e.button > 0 || e.target.closest('input')) return;
+  const c = cotas.find((x) => x.chip === chip); if (!c) return;
+  e.preventDefault();
+  chipDrag = { c, x: e.clientX, y: e.clientY, id: e.pointerId, movido: false, antes: c.off.clone(), state: cotasCompartidas() ? null : captureState() };
+  try { chip.setPointerCapture(e.pointerId); } catch (err) { /* nada */ }
+});
+labelsEl.addEventListener('pointermove', (e) => {
+  const d = chipDrag; if (!d || e.pointerId !== d.id) return;
+  if (!d.movido && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) return;
+  d.movido = true; d.c.chip.classList.add('arrastrando');
+  d.c.off = offsetAt(e.clientX, e.clientY, d.c.a, d.c.b);
+  dibujarCota(d.c); requestRender();
+});
+const soltarChip = (e) => {
+  const d = chipDrag; if (!d || e.pointerId !== d.id) return;
+  chipDrag = null; d.c.chip.classList.remove('arrastrando'); showSnap(null); requestRender();
+  if (!d.movido || d.c.off.distanceTo(d.antes) < 1e-9) return;
+  if (cotasCompartidas()) { avisoAlmacen(almacen.guardarCota(cotaParaGuardar(d.c))); pushCotaUndo(`Correr la cota ${d.c.tag || d.c.n}`, { tipo: 'mover', uuid: d.c.uuid, antes: d.antes.toArray(), despues: d.c.off.toArray() }); }   // se ve corrida para todos
+  else pushUndo(`Correr la cota ${d.c.tag || d.c.n}`, d.state);
+};
+labelsEl.addEventListener('pointerup', soltarChip);
+labelsEl.addEventListener('pointercancel', soltarChip);
+labelsEl.addEventListener('dblclick', (e) => {
+  const chip = e.target.closest('.cota-chip'); if (!chip || chip.classList.contains('live')) return;
+  const c = cotas.find((x) => x.chip === chip); if (!c) return;
+  e.preventDefault(); e.stopPropagation();
+  editarEtiquetaChip(c);
+});
+function editarEtiquetaChip(c) {
+  if (c.chip.querySelector('input')) return;
+  const antes = c.tag, state = cotasCompartidas() ? null : captureState();
+  c.chip.classList.add('editando');
+  c.chip.innerHTML = `<input class="cota-tag" type="text" maxlength="6" value="${esc(c.tag)}" placeholder="${c.n}" aria-label="Etiqueta de la cota ${c.n}" autocomplete="off" spellcheck="false"><b>${mm(c.value)}</b>mm`;
+  const inp = c.chip.querySelector('input');
+  inp.focus(); inp.select();
+  let listo = false;
+  const fin = (guardar) => {
+    if (listo) return; listo = true;
+    if (guardar) c.tag = inp.value.trim().toUpperCase();
+    c.chip.classList.remove('editando'); c.chip.innerHTML = chipHTML(c.tag, c);
+    if (c.tag !== antes) {
+      if (cotasCompartidas()) { avisoAlmacen(almacen.guardarCota(cotaParaGuardar(c))); pushCotaUndo(`Etiqueta de la cota (${antes || '–'} → ${c.tag || '–'})`, { tipo: 'etiqueta', uuid: c.uuid, antes, despues: c.tag }); }   // la etiqueta, para todos
+      else pushUndo(`Etiqueta de la cota (${antes || '–'} → ${c.tag || '–'})`, state);
+    }
+    if (measuring) renderCard();
+    requestRender();
+  };
+  inp.addEventListener('input', () => { const pos = inp.selectionStart; inp.value = inp.value.toUpperCase(); try { inp.setSelectionRange(pos, pos); } catch (err) { /* nada */ } });
+  inp.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); fin(true); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); fin(false); }
+  });
+  inp.addEventListener('blur', () => fin(true));
 }
 function dropCota(c) {
   measureRoot.remove(c.grp);
@@ -3034,6 +3173,7 @@ function deleteCota(i) {
   const c = cotas[i]; if (!c) return;
   if (!puedeBorrarCota(c)) { toast(`La cota ${c.tag || c.n} la hizo ${c.autor || 'otra persona'}: solo ella o un jefe la pueden borrar.`, 'error'); return; }   // Cerebrus
   if (!cotasCompartidas()) saveUndo(`Borrar la cota ${c.tag || c.n}`);
+  else if (!c.autorId || c.autorId === almacen.usuario.id) pushCotaUndo(`Borrar la cota ${c.tag || c.n}`, { tipo: 'borrar', uuid: c.uuid, datos: cotaDatos(c) });   // Cerebrus: las propias se pueden traer de vuelta
   dropCota(c); cotas.splice(i, 1);
   if (cotasCompartidas()) avisoAlmacen(almacen.borrarCota(c.uuid));   // Cerebrus: se borra para todos
   updateMeasureBtn(); renderCard(); requestRender();
@@ -3486,7 +3626,7 @@ function captureState() {
     hidden: model.pieces.filter((p) => p.hidden).map((p) => p.i),
     layersVis: model.layers.map((L) => L.visible),
     layerColors: model.layers.map((L) => (L.custom ? L.hex : null)),
-    cotas: cotasCompartidas() ? null : cotas.map((c) => ({ n: c.n, tag: c.tag, a: c.a.clone(), b: c.b.clone(), real: (c.real || c.b).clone(), value: c.value, axis: c.axis, d: c.d.slice(), uuid: c.uuid })),   // Cerebrus: compartidas = no se deshacen
+    cotas: cotasCompartidas() ? null : cotas.map((c) => ({ n: c.n, tag: c.tag, a: c.a.clone(), b: c.b.clone(), real: (c.real || c.b).clone(), value: c.value, axis: c.axis, d: c.d.slice(), uuid: c.uuid, off: c.off.clone() })),   // Cerebrus: compartidas = no se deshacen
     cotaN,
     notes: almacen ? null : notes.map((n) => ({ ...n, pin: undefined, center: undefined, pieces: n.pieces.slice() })),
     noteSeq,
@@ -3510,7 +3650,7 @@ function restoreState(s) {
   if (s.cotas) {
     cotas.forEach(dropCota); cotas = [];
     pendingA = null; hideTemp();
-    for (const c of s.cotas) addCota(c.a, { end: c.b, real: c.real, axis: c.axis, value: c.value, d: c.d }, c.n, c.tag, { uuid: c.uuid });
+    for (const c of s.cotas) addCota(c.a, { end: c.b, real: c.real, axis: c.axis, value: c.value, d: c.d, off: c.off }, c.n, c.tag, { uuid: c.uuid });
     cotaN = s.cotaN;
   }
   updateMeasureBtn();
@@ -3532,9 +3672,47 @@ function restoreState(s) {
   for (const i of [...sel]) if (!model.pieces[i].mesh.visible) sel.delete(i);
   refreshSelection();
 }
+// Cerebrus: en un plano compartido las cotas también se deshacen (Coco, 26/11): de a una, y para todos.
+// Crear ↔ borrar, correr y etiqueta. (El resto del estado guardado no trae cotas: cotas = null.)
+function pushCotaUndo(label, op) {
+  undoStack.push({ label, cota: op });
+  if (undoStack.length > 60) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoBtns();
+}
+const cotaDatos = (c) => ({ ...cotaParaGuardar(c), autorId: c.autorId, autor: c.autor });
+function aplicarCotaOp(op, atras) {
+  const c = cotas.find((x) => x.uuid === op.uuid);
+  if (op.tipo === 'crear' || op.tipo === 'borrar') {
+    if ((op.tipo === 'crear') === atras) {   // sacarla
+      if (!c) return false;
+      dropCota(c); cotas.splice(cotas.indexOf(c), 1);
+      avisoAlmacen(almacen.borrarCota(c.uuid));
+    } else if (!c) {   // volver a ponerla (con el mismo id)
+      const dt = op.datos, V = (v) => new THREE.Vector3().fromArray(v);
+      const nueva = addCota(V(dt.a), { end: V(dt.b), real: V(dt.real), axis: dt.axis, value: dt.value, d: dt.d, off: V(dt.off) }, dt.n, dt.tag, dt);
+      avisoAlmacen(almacen.guardarCota(cotaParaGuardar(nueva)));
+    }
+  } else {
+    if (!c) return false;
+    const v = atras ? op.antes : op.despues;
+    if (op.tipo === 'mover') { c.off = new THREE.Vector3().fromArray(v); dibujarCota(c); }
+    else { c.tag = v; c.chip.innerHTML = chipHTML(c.tag, c); }
+    avisoAlmacen(almacen.guardarCota(cotaParaGuardar(c)));
+  }
+  updateMeasureBtn(); if (measuring) renderCard(); requestRender();
+  return true;
+}
 function undo() {
   const h = undoStack.pop();
   if (!h) { toast('No hay nada para deshacer.'); return; }
+  if (h.cota) {   // Cerebrus
+    const ok = cotasCompartidas() && aplicarCotaOp(h.cota, true);
+    if (ok) redoStack.push(h);
+    updateUndoBtns();
+    toast(ok ? 'Se deshizo: ' + h.label : 'No se pudo deshacer: esa cota ya no está (la cambió otra persona).');
+    return;
+  }
   redoStack.push({ label: h.label, state: captureState() });
   restoreState(h.state);
   updateUndoBtns();
@@ -3543,6 +3721,13 @@ function undo() {
 function redo() {
   const h = redoStack.pop();
   if (!h) { toast('No hay nada para rehacer.'); return; }
+  if (h.cota) {   // Cerebrus
+    const ok = cotasCompartidas() && aplicarCotaOp(h.cota, false);
+    if (ok) undoStack.push(h);
+    updateUndoBtns();
+    toast(ok ? 'Se rehízo: ' + h.label : 'No se pudo rehacer: esa cota ya no está (la cambió otra persona).');
+    return;
+  }
   undoStack.push({ label: h.label, state: captureState() });
   restoreState(h.state);
   updateUndoBtns();
@@ -3573,9 +3758,12 @@ function setMeasure(on) {
 function cancelPending() { pendingA = null; hideTemp(); renderCard(); requestRender(); }
 
 function measureCardHTML() {
-  const step = pendingA
-    ? '<b>Segundo punto:</b> hacé click donde termina la medida. <kbd>Esc</kbd> cancela.'
-    : '<b>Primer punto:</b> hacé click donde empieza la medida.';
+  // Cerebrus: 3 pasos, como en Rhino (Coco, 26/11)
+  const step = pendingInfo
+    ? '<b>3 · Ubicar la cota:</b> mové el mouse para correr la línea y hacé click donde va (click sobre la medida = sin correr). <kbd>Esc</kbd> cancela.'
+    : pendingA
+      ? '<b>2 · Segundo punto:</b> hacé click donde termina la medida. <kbd>Esc</kbd> cancela.'
+      : '<b>1 · Primer punto:</b> hacé click donde empieza la medida.';
   const list = cotas.length
     ? `<ol class="cotas">${cotas.map((c, i) => `<li><input class="cn" type="text" value="${esc(c.tag)}" placeholder="${c.n}" maxlength="6" data-cota="${i}" autocomplete="off" spellcheck="false" aria-label="Etiqueta de la cota ${c.n}" title="Escribí un número o una letra (R = Rafix, M = Minifix)">
         <span class="cv"><b>${mm(c.value)}</b> mm${c.axis ? ` <span class="cax">recta en ${c.axis}</span>` : ''}</span>
@@ -3586,9 +3774,9 @@ function measureCardHTML() {
     <p class="mstep">${step}</p>
     <ul class="snaps" aria-label="Dónde se pega el punto">${['vertex', 'mid', 'edge', 'face', 'eje', 'ejemid'].map((k) => `<li>${SNAP_SVG[k]}${SNAP_LABEL[k]}</li>`).join('')}</ul>
     <p class="mhint">Con <kbd>Shift</kbd> apretado la cota va recta en X, Y o Z: sirve para luces interiores y alturas. Si hay esquinas muy juntas, acercate con la rueda antes de marcar.</p>
-    ${cotasCompartidas() ? '<p class="mhint">📌 Las cotas de este plano quedan guardadas y las ven todos los que ven la obra.</p>' : ''}
+    ${cotasCompartidas() ? '<p class="mhint">📌 Las cotas de este plano quedan guardadas y las ven todos los que ven la obra. <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace la última (también para todos).</p>' : ''}
     ${list}
-    ${cotas.length ? `<p class="mhint">Para marcar la unión, hacé click en el número de la cota y escribí una letra: <b>R</b> Rafix, <b>M</b> Minifix.</p>
+    ${cotas.length ? `<p class="mhint">Para marcar la unión, hacé <b>doble click en el número</b> de la cota (en el dibujo o acá) y escribí una letra: <b>R</b> Rafix, <b>M</b> Minifix. Para <b>correr</b> una cota, agarrá su número y arrastralo.</p>
     <div class="actions"><button class="btn small" type="button" data-act="cotas-clear">Borrar todas las cotas</button></div>` : ''}`;
 }
 
@@ -3841,11 +4029,11 @@ function drawCotaLabels(g, s, ow, oh, pen) {
   const fs = 13 * s, pad = 5 * s, fam = '"IBM Plex Mono", Consolas, monospace';
   const meas = '#d4381c';   // sobre papel blanco, siempre el rojo fuerte
   for (const c of cotas) {
-    _p.addVectors(c.a, c.b).multiplyScalar(0.5).project(cam);
+    _p.addVectors(c.a, c.b).multiplyScalar(0.5).add(c.off).project(cam);
     if (_p.z > 1 || _p.z < -1) continue;
     const x = ((_p.x + 1) / 2) * ow, y = ((1 - _p.y) / 2) * oh;
     if (x < 0 || y < 0 || x > ow || y > oh) continue;
-    const val = `${mm(c.value)} mm${c.axis ? ' · ' + c.axis : ''}`;
+    const val = `${mm(c.value)} mm`;   // Cerebrus: sin X/Y/Z
     g.font = `600 ${fs}px ${fam}`;
     const vw = g.measureText(val).width;
     let tw = 0;
@@ -4210,7 +4398,7 @@ function renderPeek() {
   if (!model) { el.innerHTML = '<span>Abrí un modelo para empezar</span>'; return; }
   if (measuring) {
     const last = cotas[cotas.length - 1];
-    el.innerHTML = `<span><b>Medir</b> · ${pendingA ? 'tocá el segundo punto' : 'tocá el primer punto'}</span>${last ? `<span class="pd">${last.tag ? esc(last.tag) + ' ' : ''}${mm(last.value)} mm</span>` : ''}`;
+    el.innerHTML = `<span><b>Medir</b> · ${pendingInfo ? 'tocá dónde va la línea' : pendingA ? 'tocá el segundo punto' : 'tocá el primer punto'}</span>${last ? `<span class="pd">${last.tag ? esc(last.tag) + ' ' : ''}${mm(last.value)} mm</span>` : ''}`;
     return;
   }
   if (sel.size === 1) {
@@ -4443,8 +4631,8 @@ const safeName = (s) => (s || '').replace(/[<>:"/\\|?*\u0000-\u001f]+/g, '-').re
 function sharedState() {
   const s = captureState();
   return {
-    hidden: s.hidden, cotaN: s.cotaN, pen: penMode,
-    cotas: s.cotas.map((c) => ({ n: c.n, tag: c.tag, a: c.a.toArray(), b: c.b.toArray(), real: c.real.toArray(), value: c.value, axis: c.axis, d: c.d })),
+    hidden: s.hidden, cotaN, pen: penMode,
+    cotas: cotas.map((c) => ({ n: c.n, tag: c.tag, a: c.a.toArray(), b: c.b.toArray(), real: c.real.toArray(), value: c.value, axis: c.axis, d: c.d, off: c.off.toArray() })),   // Cerebrus: + corrimiento
     view: { name: currentView, pos: cam.position.toArray(), target: controls.target.toArray(), zoom: cam.zoom, half: cam.isOrthographicCamera ? cam.top : null },
   };
 }
@@ -4533,7 +4721,7 @@ function applySharedState(st) {
   const hid = new Set(st.hidden || []);
   for (const p of model.pieces) p.hidden = hid.has(p.i);
   const V = (a) => new THREE.Vector3().fromArray(a);
-  for (const c of st.cotas || []) addCota(V(c.a), { end: V(c.b), real: V(c.real), axis: c.axis, value: c.value, d: c.d }, c.n, c.tag);
+  for (const c of st.cotas || []) addCota(V(c.a), { end: V(c.b), real: V(c.real), axis: c.axis, value: c.value, d: c.d, off: c.off ? V(c.off) : null }, c.n, c.tag);
   cotaN = st.cotaN || cotas.length;
   updateMeasureBtn();
   applyVisibility();
@@ -4843,7 +5031,7 @@ async function conectarAlmacen(alm) {
     try { listaC = await alm.cargarCotas(); } catch (e) { console.error(e); }
     if (almacen !== alm) return false;
     const V = (v) => new THREE.Vector3(+v[0], +v[1], +v[2]);
-    const ponerCota = (c) => addCota(V(c.a), { end: V(c.b), real: V(c.real || c.b), axis: c.axis || '', value: +c.value, d: Array.from(c.d || [0, 0, 0], Number) }, c.n, c.tag, c);
+    const ponerCota = (c) => addCota(V(c.a), { end: V(c.b), real: V(c.real || c.b), axis: c.axis || '', value: +c.value, d: Array.from(c.d || [0, 0, 0], Number), off: c.off ? V(c.off) : null }, c.n, c.tag, c);
     const locales = cotas.filter((c) => !c.autorId);   // las que se hicieron antes de conectar (no deberían quedar) se descartan
     locales.forEach(dropCota);
     cotas = []; pendingA = null; hideTemp();
@@ -4856,8 +5044,11 @@ async function conectarAlmacen(alm) {
       const i = cotas.findIndex((x) => x.uuid === (ch.uuid || (ch.cota && ch.cota.uuid)));
       if (ch.borrada) { if (i >= 0) { dropCota(cotas[i]); cotas.splice(i, 1); } }
       else if (ch.cota) {
-        if (i >= 0) { if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.cota === String(i)) return;   // la está escribiendo esta persona
-          cotas[i].tag = ch.cota.tag; cotas[i].chip.innerHTML = chipHTML(cotas[i].tag, cotas[i]); }
+        if (i >= 0) {
+          const c = cotas[i], ae = document.activeElement;
+          if (!(chipDrag && chipDrag.c === c)) { const o = ch.cota.off ? V(ch.cota.off) : new THREE.Vector3(); if (o.distanceTo(c.off) > 1e-9) { c.off = o; dibujarCota(c); } }   // la corrió otra persona
+          const escribiendo = ae && ((ae.dataset && ae.dataset.cota === String(i)) || c.chip.contains(ae));   // la está escribiendo esta persona
+          if (!escribiendo) { c.tag = ch.cota.tag; c.chip.innerHTML = chipHTML(c.tag, c); } }
         else { ponerCota(ch.cota); cotaN = Math.max(cotaN, ch.cota.n || 0); }
       }
       updateMeasureBtn(); if (measuring && !(document.activeElement && document.activeElement.matches && document.activeElement.matches('input[data-cota]'))) renderCard(); requestRender();
